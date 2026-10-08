@@ -18,6 +18,7 @@
   --bg:#eef1f6; --surface:#ffffff; --line:#d5dbe6; --fg:#141b2b; --muted:#5b667c;
   --eu:#1d3f9b; --eu-ink:#ffffff; --top:#14213f; --top-ink:#ffffff;
   --in:#13824f; --on-in:#ffffff; --in-soft:#dff3e9; --out:#c46a0a; --on-out:#1b1206; --out-soft:#fbeedd; --danger:#b42318;
+  --note-bg:#fff6d6; --note-line:#e2bf4f; --alert-soft:#fde7e4;
   --f-display:"Avenir Next Condensed","AvenirNextCondensed-Bold","Arial Narrow",system-ui,sans-serif;
   --f-body:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;
   color-scheme:light;
@@ -26,6 +27,7 @@
   --bg:#0f1420; --surface:#18202f; --line:#2a3447; --fg:#e8ecf4; --muted:#9aa5ba;
   --eu:#4f74d9; --eu-ink:#ffffff; --top:#0a0f1b; --top-ink:#e8ecf4;
   --in:#3fc287; --on-in:#0c1a12; --in-soft:#173527; --out:#f0a24a; --on-out:#1b1206; --out-soft:#3a2a15; --danger:#f2786b;
+  --note-bg:#2f2810; --note-line:#8a6d1f; --alert-soft:#3a1916;
   color-scheme:dark}}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0}
@@ -35,10 +37,11 @@ body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:16
 h1{font:700 1.45rem var(--f-display);letter-spacing:.03em;margin:0;text-transform:uppercase}
 .clock{white-space:nowrap;font:600 1.15rem var(--f-display);opacity:.8;font-variant-numeric:tabular-nums}
 .wrap{max-width:760px;margin:0 auto;padding-inline:16px;padding-block:14px calc(96px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:16px}
-nav{position:fixed;left:0;right:0;bottom:0;z-index:10;background:var(--surface);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(4,1fr);padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px))}
-nav button{font:600 .72rem var(--f-body);border:0;background:transparent;color:var(--muted);padding:6px 2px;border-radius:10px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer}
+nav{position:fixed;left:0;right:0;bottom:0;z-index:10;background:var(--surface);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(5,1fr);padding:6px 4px calc(6px + env(safe-area-inset-bottom,0px))}
+nav button{font:600 .68rem var(--f-body);border:0;background:transparent;color:var(--muted);padding:6px 0;border-radius:10px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;position:relative}
 nav button svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 nav button[aria-selected="true"]{color:var(--eu)}
+nav .dot{position:absolute;top:2px;right:calc(50% - 20px);min-width:18px;height:18px;border-radius:9px;background:var(--out);color:var(--on-out);font:700 .7rem/18px var(--f-body);padding:0 5px}
 button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--eu);outline-offset:2px}
 .panel{display:flex;flex-direction:column;gap:16px}
 .label{font:600 .76rem var(--f-body);text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
@@ -56,48 +59,59 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
 .who{display:flex;flex-direction:column;gap:2px}
 .who .name{font:700 1.6rem/1.1 var(--f-display);text-transform:uppercase;letter-spacing:.02em}
 .who .co{font-size:1.05rem;color:var(--muted)}
+.vhead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
 .pill{align-self:flex-start;font:600 .85rem var(--f-body);padding:4px 10px;border-radius:99px}
 .pill.in{background:var(--in-soft);color:var(--in)}
-.pill.off{background:var(--bg);color:var(--muted);border:1px solid var(--line)}
 .big{font:700 1.35rem var(--f-display);text-transform:uppercase;letter-spacing:.08em;border:0;border-radius:12px;padding:17px;cursor:pointer;width:100%}
 .big.arr{background:var(--in);color:var(--on-in)}
 .big.dep{background:var(--out);color:var(--on-out)}
-.big:disabled{opacity:.5}
+.big:disabled{opacity:.45}
 .row{display:flex;gap:10px;flex-wrap:wrap}
-.row > *{flex:1 1 140px;min-width:0}
+.row > *{flex:1 1 130px;min-width:0}
 .field{display:flex;flex-direction:column;gap:4px}
 .field input,.field textarea,.search{font:500 16px var(--f-body);color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:11px 12px;width:100%}
+.field textarea{resize:vertical}
 .btn{font:600 .95rem var(--f-body);border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:9px;padding:10px 14px;cursor:pointer}
 .btn.primary{background:var(--eu);border-color:var(--eu);color:var(--eu-ink)}
+.btn.ok{background:var(--in);border-color:var(--in);color:var(--on-in)}
 .btn.danger{color:var(--danger);border-color:var(--danger)}
 .btn.small{padding:7px 11px;font-size:.88rem}
 .sugg{display:flex;flex-direction:column;gap:6px}
+.sugg:empty{display:none}
 .sugg button{display:flex;justify-content:space-between;gap:10px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 12px;cursor:pointer;color:var(--fg);font:inherit}
 .pl{font:700 1.05rem var(--f-display);letter-spacing:.05em;white-space:nowrap}
+.pl.swap{color:var(--out)}
 .sectionhead{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .count{font:700 1.1rem var(--f-display);font-variant-numeric:tabular-nums}
 .list{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden}
 .item{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:12px 14px;border-top:1px solid var(--line)}
 .item:first-child{border-top:0}
-.item .t{font:700 1.15rem var(--f-display);font-variant-numeric:tabular-nums;color:var(--in)}
-.item .m{min-width:0}
-.item .m div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item .m{min-width:0;display:flex;flex-direction:column}
+.item .m b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.acts{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
 .sub{color:var(--muted);font-size:.9rem}
 .empty{padding:22px 16px;color:var(--muted);text-align:center}
+.note{background:var(--note-bg);border:1px solid var(--note-line);border-radius:10px;padding:10px 12px;font-size:.95rem;white-space:pre-wrap}
+.note .label{display:block;margin-bottom:2px}
+.pnote{display:block;background:var(--note-bg);border-radius:6px;padding:2px 8px;margin-top:3px;font-size:.88rem;color:var(--fg);white-space:normal}
 .daynav{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center}
 .daynav input{font:600 16px var(--f-body);padding:10px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--fg);width:100%;text-align:center}
 .tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .tools .search{flex:1 1 180px;width:auto;background:var(--surface)}
 .stats{display:flex;gap:18px;flex-wrap:wrap;color:var(--muted);font-size:.92rem}
 .stats b{color:var(--fg);font-family:var(--f-display);font-size:1.15rem}
-.hrow{display:grid;grid-template-columns:4.2rem 1fr;gap:12px;padding:12px 14px;border-top:1px solid var(--line);align-items:start}
+.hrow{display:grid;grid-template-columns:4.2rem 1fr auto;gap:12px;padding:12px 14px;border-top:1px solid var(--line);align-items:start}
 .hrow:first-child{border-top:0}
 .times{display:flex;flex-direction:column;font:700 1.1rem/1.2 var(--f-display);font-variant-numeric:tabular-nums}
 .times .a{color:var(--in)} .times .d{color:var(--out)}
 .hrow .m{min-width:0;display:flex;flex-direction:column;gap:1px}
-.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:12px 18px;border-radius:10px;font-weight:600;max-width:calc(100% - 32px);z-index:30;text-align:center}
+.editbox{grid-column:1/-1;display:flex;flex-direction:column;gap:10px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:12px 16px;border-radius:10px;font-weight:600;width:max-content;max-width:calc(100% - 32px);z-index:30;display:flex;gap:14px;align-items:center}
+.toast .tbtn{border:0;background:transparent;color:var(--bg);font:700 .95rem var(--f-body);text-decoration:underline;padding:4px;cursor:pointer;white-space:nowrap}
 .confirm{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .notice{background:var(--out-soft);color:var(--fg);border:1px solid var(--out);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.notice.alert{background:var(--alert-soft);border-color:var(--danger)}
+.notice.alert b{color:var(--danger)}
 details summary{cursor:pointer;font-weight:600}
 .lock{position:fixed;inset:0;z-index:50;background:var(--top);color:var(--top-ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px}
 .lock h2{font:700 1.5rem var(--f-display);text-transform:uppercase;letter-spacing:.05em;margin:0}
@@ -122,7 +136,9 @@ details summary{cursor:pointer;font-weight:600}
 .gh .btn{margin-left:auto}
 .gp{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:6px 14px 10px 14px}
 .gp .m{min-width:0;display:flex;flex-direction:column}
-.pl.swap{color:var(--out)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:2px;border:1px solid var(--line);border-radius:8px;padding:2px 2px 2px 10px;background:var(--surface)}
+.badgeno{font:700 1.2rem var(--f-display);color:var(--eu);min-width:3.2rem}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -141,9 +157,10 @@ details summary{cursor:pointer;font-weight:600}
 </header>
 
 <div class="wrap">
+  <div class="notice alert" id="rappel" hidden></div>
   <div class="notice" id="installHint" hidden>
     <b>Installe l'appli sur ton iPhone</b>
-    <span>Touche le bouton Partager <span aria-hidden="true">⎙</span> de Safari, puis « Sur l'écran d'accueil ». Ouvre ensuite le registre depuis l'icône : c'est là que tes données seront gardées.</span>
+    <span>Touche le bouton Partager de Safari, puis « Sur l'écran d'accueil ». Ouvre ensuite le registre depuis l'icône : c'est là que tes données seront gardées.</span>
   </div>
   <div class="notice" id="backupHint" hidden>
     <span id="backupHintText"></span>
@@ -185,34 +202,72 @@ details summary{cursor:pointer;font-weight:600}
     <div class="list" id="histList"></div>
   </section>
 
+  <!-- BADGES -->
+  <section class="panel" id="p-badges" hidden>
+    <div class="card">
+      <h2>Remettre un badge ou une clé</h2>
+      <div class="field"><label class="label" for="bNum">N° du badge ou de la clé</label><input id="bNum" autocomplete="off" autocorrect="off" autocapitalize="characters"></div>
+      <div class="row">
+        <div class="field"><label class="label" for="bNom">Nom</label><input id="bNom" autocomplete="off" autocorrect="off" autocapitalize="characters"></div>
+        <div class="field"><label class="label" for="bPrenom">Prénom</label><input id="bPrenom" autocomplete="off" autocorrect="off" autocapitalize="words"></div>
+      </div>
+      <div class="sugg" id="bSugg"></div>
+      <div class="field"><label class="label" for="bSoc">Entreprise</label><input id="bSoc" autocomplete="off" autocorrect="off" list="socListB"></div>
+      <datalist id="socListB"></datalist>
+      <div class="row">
+        <div class="field"><label class="label" for="bDate">Date</label><input type="date" id="bDate"></div>
+        <div class="field"><label class="label" for="bHeure">Heure</label><input type="time" id="bHeure"></div>
+      </div>
+      <p class="hint">La date et l'heure se remplissent toutes seules. Tu peux les changer si tu notes une remise après coup.</p>
+      <button class="big arr" id="bSave">Enregistrer la remise</button>
+    </div>
+    <div class="sectionhead"><span class="label">Pas encore rendus</span><span class="count" id="bCount">0</span></div>
+    <div class="list" id="bOpen"></div>
+    <div class="sectionhead"><span class="label">Rendus récemment</span></div>
+    <div class="list" id="bDone"></div>
+  </section>
+
   <!-- PERSONNES -->
   <section class="panel" id="p-personnes" hidden>
     <div class="tools">
-      <input class="search" id="persSearch" placeholder="Rechercher une personne" aria-label="Rechercher une personne">
+      <input class="search" id="persSearch" placeholder="Rechercher une personne ou une plaque" aria-label="Rechercher une personne">
       <span class="count" id="persCount"></span>
     </div>
     <details class="card">
       <summary>Importer ma liste existante</summary>
-      <p class="hint">Colle une ligne par personne, dans cet ordre : <b>Plaque ; Nom ; Prénom ; Société</b>. Les séparateurs « ; », « , » ou tabulation fonctionnent. Plusieurs lignes avec la même plaque = plusieurs personnes dans ce véhicule. Une même personne peut avoir plusieurs plaques.</p>
+      <p class="hint">Colle une ligne par personne, dans cet ordre : <b>Plaque ; Nom ; Prénom ; Société</b>. Les séparateurs « ; », « , » ou tabulation fonctionnent. Plusieurs lignes avec la même plaque = plusieurs personnes dans ce véhicule.</p>
       <div class="field"><textarea id="importText" rows="6" placeholder="AB-123-CD;MARTIN;Paul;Eiffage&#10;GH-456-JK;DURAND;Sophie;Veolia"></textarea></div>
       <button class="btn primary" id="importBtn" style="align-self:flex-start">Importer</button>
     </details>
+    <p class="hint">Touche « Modifier » pour corriger un nom, ajouter une note (livraison, quai, contact…) ou gérer ses plaques.</p>
     <div class="list" id="persList"></div>
   </section>
 
   <!-- RÉGLAGES -->
   <section class="panel" id="p-reglages" hidden>
     <div class="card">
+      <h2>Rappel de fin de service</h2>
+      <p class="hint">À cette heure, un bandeau rouge s'affiche s'il reste des personnes sur site ou des badges non rendus. Il apparaît quand l'appli est ouverte.</p>
+      <div class="row">
+        <div class="field"><label class="label" for="rappelIn">Heure du rappel</label><input type="time" id="rappelIn"></div>
+      </div>
+      <div class="row">
+        <button class="btn primary" id="rappelSave">Enregistrer</button>
+        <button class="btn" id="rappelOff">Désactiver</button>
+      </div>
+    </div>
+    <div class="card">
       <h2>Mes données</h2>
       <p class="hint">Tout est enregistré uniquement dans ce téléphone. Rien n'est envoyé sur internet.</p>
       <div class="kv"><span>Personnes connues</span><b id="stPers">0</b></div>
       <div class="kv"><span>Véhicules connus</span><b id="stVeh">0</b></div>
       <div class="kv"><span>Passages enregistrés</span><b id="stPass">0</b></div>
+      <div class="kv"><span>Remises de badges</span><b id="stBadge">0</b></div>
       <div class="kv"><span>Dernière sauvegarde</span><b id="stBackup">jamais</b></div>
     </div>
     <div class="card">
       <h2>Sauvegarde</h2>
-      <p class="hint">Si tu perds ou changes de téléphone, l'historique part avec. Fais une sauvegarde régulièrement et garde le fichier dans « Fichiers » (sur l'iPhone, pas dans iCloud si tu veux qu'il reste en local).</p>
+      <p class="hint">Si tu perds ou changes de téléphone, l'historique part avec. Fais une sauvegarde régulièrement et garde le fichier dans « Fichiers ».</p>
       <div class="row">
         <button class="btn primary" id="backupBtn">Sauvegarder</button>
         <button class="btn" id="restoreBtn">Restaurer un fichier</button>
@@ -233,7 +288,7 @@ details summary{cursor:pointer;font-weight:600}
     </div>
     <div class="card">
       <h2>Tout effacer</h2>
-      <p class="hint">Supprime toutes les personnes et tout l'historique de ce téléphone. Impossible à annuler.</p>
+      <p class="hint">Supprime toutes les personnes, l'historique et les badges de ce téléphone. Impossible à annuler.</p>
       <div id="wipeZone"></div>
     </div>
   </section>
@@ -242,8 +297,9 @@ details summary{cursor:pointer;font-weight:600}
 <nav role="tablist">
   <button role="tab" aria-selected="true" data-tab="filtrage"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="10" rx="2"/><path d="M6 12h3M12 12h6"/></svg>Filtrage</button>
   <button role="tab" aria-selected="false" data-tab="historique"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Historique</button>
+  <button role="tab" aria-selected="false" data-tab="badges"><svg viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M15 8l2 2"/></svg>Badges<span class="dot" id="badgeDot" hidden></span></button>
   <button role="tab" aria-selected="false" data-tab="personnes"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c1.9.7 3.1 2.4 3.5 5.2"/></svg>Personnes</button>
-  <button role="tab" aria-selected="false" data-tab="reglages"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Réglages</button>
+  <button role="tab" aria-selected="false" data-tab="reglages"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>Réglages</button>
 </nav>
 <div class="toast" id="toast" hidden></div>
 
@@ -257,21 +313,22 @@ details summary{cursor:pointer;font-weight:600}
   const fmtPlate = k => isSIV(k) ? k.slice(0,2)+"-"+k.slice(2,5)+"-"+k.slice(5) : k;
   const pad = n => String(n).padStart(2,"0");
   const dayOf = d => d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
-  const hm = iso => { if(!iso) return ""; const d=new Date(iso); return pad(d.getHours())+":"+pad(d.getMinutes()); };
+  const hmOf = d => pad(d.getHours())+":"+pad(d.getMinutes());
+  const hm = iso => iso ? hmOf(new Date(iso)) : "";
+  const dmy = iso => iso ? new Date(iso).toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit"}) : "";
   const dur = (a,b) => { const m=Math.max(0,Math.round((new Date(b)-new Date(a))/60000)); return m<60? m+" min" : Math.floor(m/60)+" h "+pad(m%60); };
   const fullName = p => p ? [String(p.nom||"").toUpperCase(), p.prenom||""].filter(Boolean).join(" ") : "";
   const norm = s => String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").trim();
   const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,9);
+  const atLocal = (day, time) => new Date(day+"T"+time+":00");
 
   // ---------- STOCKAGE LOCAL (uniquement sur ce téléphone) ----------
-  // P : personnes {id:{id,nom,prenom,societe}}   V : véhicules {plaque:[ids]}
-  // passages : [{id,grp,pid,cle,plaque,nom,prenom,societe,arrivee,depart,plaqueDepart,jour}]
-  const K = { p:"reg.p2", v:"reg.v2", pass:"reg.passages", old:"reg.personnes", backup:"reg.lastBackup", pin:"reg.pin" };
+  const K = { p:"reg.p2", v:"reg.v2", vn:"reg.vn", pass:"reg.passages", badges:"reg.badges", set:"reg.set", dismiss:"reg.dismiss", old:"reg.personnes", backup:"reg.lastBackup", pin:"reg.pin" };
   function load(k, def){ try{ const v=localStorage.getItem(k); return v ? JSON.parse(v) : def; }catch(e){ return def; } }
   function save(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); return true; }catch(e){ toast("Mémoire du téléphone pleine : fais une sauvegarde puis efface d'anciens passages."); return false; } }
   function migrateV1(oldPers, pass){
     const P={}, V={};
-    for(const [k,p] of Object.entries(oldPers||{})){ const id=uid(); P[id]={id, nom:p.nom||"", prenom:p.prenom||"", societe:p.societe||"", cree:p.cree||new Date().toISOString()}; V[k]=[id]; }
+    for(const [k,p] of Object.entries(oldPers||{})){ const id=uid(); P[id]={id, nom:p.nom||"", prenom:p.prenom||"", societe:p.societe||"", note:"", cree:p.cree||new Date().toISOString()}; V[k]=[id]; }
     for(const r of pass){ if(!r.pid && V[r.cle]) r.pid=V[r.cle][0]; if(!r.grp) r.grp=r.id; if(r.depart && r.plaqueDepart===undefined) r.plaqueDepart=r.plaque; }
     return {P,V};
   }
@@ -281,33 +338,67 @@ details summary{cursor:pointer;font-weight:600}
     save(K.p,P); save(K.v,V); save(K.pass,passages);
     try{ localStorage.removeItem(K.old); }catch(e){}
   }
-  const saveP = () => save(K.p, P), saveV = () => save(K.v, V), savePass = () => save(K.pass, passages);
+  let VN = load(K.vn, {}), B = load(K.badges, []), S = Object.assign({ rappel:"18:00" }, load(K.set, {}));
+  const saveP = () => save(K.p, P), saveV = () => save(K.v, V), saveVN = () => save(K.vn, VN), savePass = () => save(K.pass, passages), saveB = () => save(K.badges, B), saveS = () => save(K.set, S);
   if(navigator.storage && navigator.storage.persist){ navigator.storage.persist().catch(()=>{}); }
 
   const platesOf = id => Object.keys(V).filter(k => V[k].includes(id));
   const openPassages = () => passages.filter(r => !r.depart);
+  const openBadges = () => B.filter(b => !b.rendu);
   function linkPerson(k, id){ V[k] = V[k] || []; if(!V[k].includes(id)) V[k].push(id); saveV(); }
   function unlinkPerson(k, id){ if(!V[k]) return; V[k] = V[k].filter(x => x!==id); if(!V[k].length) delete V[k]; saveV(); }
   function findPerson(nom, prenom){ const n=norm(nom), pr=norm(prenom); return Object.values(P).find(p => norm(p.nom)===n && norm(p.prenom)===pr); }
-  function createPerson(nom, prenom, societe){
+  function createPerson(nom, prenom, societe, note){
     const ex = findPerson(nom, prenom);
-    if(ex){ if(societe && !ex.societe){ ex.societe=societe; saveP(); } return ex.id; }
-    const id = uid(); P[id] = { id, nom: nom.toUpperCase(), prenom, societe, cree: new Date().toISOString() }; saveP(); return id;
+    if(ex){ let ch=false; if(societe && !ex.societe){ ex.societe=societe; ch=true; } if(note && !ex.note){ ex.note=note; ch=true; } if(ch) saveP(); return ex.id; }
+    const id = uid(); P[id] = { id, nom: nom.toUpperCase(), prenom, societe, note: note||"", cree: new Date().toISOString() }; saveP(); return id;
+  }
+  const societes = () => [...new Set(Object.values(P).map(x=>x.societe).concat(B.map(b=>b.societe)).filter(Boolean))].sort();
+
+  // ---------- Toast (avec bouton Annuler) ----------
+  let toastT;
+  function toast(msg, act){
+    const el=$("#toast");
+    el.innerHTML = `<span>${esc(msg)}</span>` + (act ? `<button class="tbtn" id="tAct">${esc(act.label)}</button>` : "");
+    el.hidden=false; clearTimeout(toastT);
+    if(act) $("#tAct").addEventListener("click", () => { el.hidden=true; act.fn(); });
+    toastT=setTimeout(()=>el.hidden=true, act ? 7000 : 2800);
   }
 
-  // ---------- Horloge ----------
-  function tick(){ const d=new Date(); $("#clock").textContent = d.toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"})+" · "+pad(d.getHours())+":"+pad(d.getMinutes()); }
-  tick(); setInterval(tick, 15000);
+  // ---------- Horloge + rappel ----------
+  function tick(){ const d=new Date(); $("#clock").textContent = d.toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"})+" · "+hmOf(d); renderRappel(); }
+  setInterval(tick, 15000);
 
-  let toastT;
-  function toast(msg){ const el=$("#toast"); el.textContent=msg; el.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>el.hidden=true, 2800); }
+  function renderRappel(){
+    const el = $("#rappel");
+    let show = false;
+    const nOn = openPassages().length, nB = openBadges().length;
+    if(S.rappel && (nOn || nB)){
+      const now = new Date(), t = atLocal(dayOf(now), S.rappel);
+      show = now >= t && load(K.dismiss, null) !== dayOf(now);
+    }
+    if(!show){ el.hidden = true; el.dataset.sig=""; return; }
+    const sig = nOn+"/"+nB;
+    el.hidden = false;
+    if(el.dataset.sig === sig) return;
+    el.dataset.sig = sig;
+    const parts = [];
+    if(nOn) parts.push(`${nOn} personne${nOn>1?"s":""} encore sur site`);
+    if(nB) parts.push(`${nB} badge${nB>1?"s":""} ou clé${nB>1?"s":""} pas rendu${nB>1?"s":""}`);
+    el.innerHTML = `<b>Fin de service · ${esc(S.rappel)}</b><span>${parts.join(" et ")}. Vérifie s'il s'agit d'oublis.</span>
+      <div class="confirm">${nOn?'<button class="btn small" id="rOn">Voir sur site</button>':''}${nB?'<button class="btn small" id="rB">Voir les badges</button>':''}<button class="btn small" id="rOk">C'est vérifié</button></div>`;
+    const ron=$("#rOn"); if(ron) ron.addEventListener("click", () => { showTab("filtrage"); $("#onsiteList").scrollIntoView({behavior:"smooth"}); });
+    const rb=$("#rB"); if(rb) rb.addEventListener("click", () => showTab("badges"));
+    $("#rOk").addEventListener("click", () => { save(K.dismiss, dayOf(new Date())); renderRappel(); });
+  }
 
   // ---------- Onglets ----------
   document.querySelectorAll("nav button").forEach(b => b.addEventListener("click", () => showTab(b.dataset.tab)));
   function showTab(t){
     document.querySelectorAll("nav button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab===t ? "true":"false"));
-    ["filtrage","historique","personnes","reglages"].forEach(n => $("#p-"+n).hidden = n!==t);
+    ["filtrage","historique","badges","personnes","reglages"].forEach(n => $("#p-"+n).hidden = n!==t);
     if(t==="historique") renderHistory();
+    if(t==="badges"){ refreshBadgeClock(); renderBadges(); }
     if(t==="personnes") renderPersons();
     if(t==="reglages") renderSettings();
     window.scrollTo(0,0);
@@ -328,13 +419,14 @@ details summary{cursor:pointer;font-weight:600}
 
   // ---------- FILTRAGE ----------
   const plateInput = $("#plateInput");
-  let cur = { k:null, selArr:new Set(), selDep:null, others:false, add:false };
+  let cur = { k:null, selArr:new Set(), selDep:null, others:false, add:false, noteEdit:false };
   plateInput.addEventListener("input", () => {
     const k = key(plateInput.value);
     if(isSIV(k) && plateInput.value !== fmtPlate(k)) plateInput.value = fmtPlate(k);
     renderResult();
   });
 
+  const pnote = p => p && p.note ? `<span class="pnote">${esc(p.note)}</span>` : "";
   function personRow(name, sub, checked, data, extra){
     return `<label class="chk"><input type="checkbox" ${checked?"checked":""} ${data}><span class="m"><b>${esc(name)}</b><span class="sub">${sub}</span></span>${extra||""}</label>`;
   }
@@ -347,7 +439,8 @@ details summary{cursor:pointer;font-weight:600}
       </div>
       <div id="addSugg" class="sugg"></div>
       <div class="field"><label class="label" for="nSoc">Société</label><input id="nSoc" autocomplete="off" autocorrect="off" list="socList"></div>
-      <datalist id="socList">${[...new Set(Object.values(P).map(x=>x.societe).filter(Boolean))].sort().map(s=>`<option value="${esc(s)}">`).join("")}</datalist>
+      <datalist id="socList">${societes().map(s=>`<option value="${esc(s)}">`).join("")}</datalist>
+      <div class="field"><label class="label" for="nNote">Note (facultatif)</label><input id="nNote" autocomplete="off" placeholder="ex. Livraison palettes, quai 3"></div>
       ${mode==="first"
         ? `<button class="big arr" id="addArrive">Enregistrer et Arrivée</button><button class="btn" id="addMore">Enregistrer et ajouter un passager</button>`
         : `<button class="btn primary" id="addOnly">Ajouter dans ce véhicule</button>`}
@@ -357,7 +450,7 @@ details summary{cursor:pointer;font-weight:600}
   function renderResult(){
     const k = key(plateInput.value);
     const box = $("#result");
-    if(k !== cur.k) cur = { k, selArr:new Set(), selDep:null, others:false, add:false };
+    if(k !== cur.k) cur = { k, selArr:new Set(), selDep:null, others:false, add:false, noteEdit:false };
     if(!k){ box.innerHTML = '<p class="hint">Tape la plaque. Les personnes habituelles de ce véhicule s\'affichent : coche celles qui sont dans la voiture, puis Arrivée. Au départ, tape la plaque de la voiture qui sort.</p>'; return; }
 
     const linked = (V[k]||[]).filter(id => P[id]);
@@ -373,10 +466,16 @@ details summary{cursor:pointer;font-weight:600}
     }
     for(const id of [...cur.selArr]) if(!arrCands.includes(id)) cur.selArr.delete(id);
 
-    let html = `<div class="card"><div class="who"><span class="label">Véhicule</span><span class="name">${esc(fmtPlate(k))}</span>
-      <span class="co">${linked.length ? linked.length+" personne"+(linked.length>1?"s":"")+" habituelle"+(linked.length>1?"s":"") : "Plaque inconnue"}</span></div>`;
+    let html = `<div class="card"><div class="vhead"><div class="who"><span class="label">Véhicule</span><span class="name">${esc(fmtPlate(k))}</span>
+      <span class="co">${linked.length ? linked.length+" personne"+(linked.length>1?"s":"")+" habituelle"+(linked.length>1?"s":"") : "Plaque inconnue"}</span></div>
+      ${k.length>=4 && !cur.noteEdit ? `<button class="btn small" id="noteBtn">${VN[k] ? "Modifier la note" : "+ Note"}</button>` : ""}</div>`;
+    if(cur.noteEdit){
+      html += `<div class="field"><label class="label" for="vNote">Note sur ce véhicule</label><textarea id="vNote" rows="2" placeholder="ex. Livraison Metro le mardi, accès quai 2">${esc(VN[k]||"")}</textarea></div>
+        <div class="confirm"><button class="btn small primary" id="vNoteSave">Enregistrer la note</button><button class="btn small" id="vNoteCancel">Annuler</button></div>`;
+    } else if(VN[k]){
+      html += `<div class="note"><span class="label">Note véhicule</span>${esc(VN[k])}</div>`;
+    }
 
-    // Arrivée
     if(!linked.length){
       const sugg = Object.keys(V).filter(pk => pk!==k && pk.includes(k)).slice(0,4);
       if(sugg.length) html += `<div class="sugg"><span class="label">Plaques proches</span>${sugg.map(pk =>
@@ -384,7 +483,7 @@ details summary{cursor:pointer;font-weight:600}
       if(k.length >= 4) html += `<span class="label">Arrivée · nouvelle personne</span>` + addPanel("first");
     } else {
       html += `<span class="label">Arrivée · qui est dans la voiture ?</span>`;
-      html += arrCands.length ? `<div class="chks">${arrCands.map(id => personRow(fullName(P[id]), esc(P[id].societe||"—"), cur.selArr.has(id), `data-arr="${esc(id)}"`,
+      html += arrCands.length ? `<div class="chks">${arrCands.map(id => personRow(fullName(P[id]), esc(P[id].societe||"—") + pnote(P[id]), cur.selArr.has(id), `data-arr="${esc(id)}"`,
         `<button class="x" data-unlink="${esc(id)}" aria-label="Retirer de ce véhicule">×</button>`)).join("")}</div>`
         : `<p class="hint">Toutes les personnes de ce véhicule sont déjà sur site.</p>`;
       html += cur.add ? addPanel("add") : `<button class="btn" id="openAdd">+ Ajouter une personne</button>`;
@@ -392,7 +491,6 @@ details summary{cursor:pointer;font-weight:600}
     }
     html += `</div>`;
 
-    // Départ
     if(open.length){
       const nDep = cur.selDep.size;
       html += `<div class="card dep"><span class="label">Départ dans ce véhicule</span>`;
@@ -415,22 +513,25 @@ details summary{cursor:pointer;font-weight:600}
     box.querySelectorAll("[data-dep]").forEach(c => c.addEventListener("change", () => { c.checked ? cur.selDep.add(c.dataset.dep) : cur.selDep.delete(c.dataset.dep); renderResult(); }));
     box.querySelectorAll("[data-unlink]").forEach(b => b.addEventListener("click", e => {
       e.preventDefault(); const id=b.dataset.unlink; unlinkPerson(k, id); cur.selArr.delete(id);
-      toast(`${fullName(P[id])} retiré(e) de ce véhicule.`); renderResult();
+      toast(`${fullName(P[id])} retiré(e) de ce véhicule.`, { label:"Annuler", fn:() => { linkPerson(k,id); renderResult(); } }); renderResult();
     }));
+    const nb = $("#noteBtn"); if(nb) nb.addEventListener("click", () => { cur.noteEdit = true; renderResult(); $("#vNote").focus(); });
+    const ns = $("#vNoteSave"); if(ns) ns.addEventListener("click", () => {
+      const v = $("#vNote").value.trim(); if(v) VN[k] = v; else delete VN[k]; saveVN(); cur.noteEdit = false; toast(v ? "Note enregistrée." : "Note supprimée."); renderResult();
+    });
+    const nc = $("#vNoteCancel"); if(nc) nc.addEventListener("click", () => { cur.noteEdit = false; renderResult(); });
     const oa = $("#openAdd"); if(oa) oa.addEventListener("click", () => { cur.add = true; renderResult(); $("#nNom").focus(); });
     const so = $("#showOthers"); if(so) so.addEventListener("click", () => { cur.others = true; renderResult(); });
     const ab = $("#arrBtn"); if(ab) ab.addEventListener("click", () => doArrival(k));
     const db = $("#depBtn"); if(db) db.addEventListener("click", () => doDeparture(k));
 
-    // panneau d'ajout de personne
     const nNom = $("#nNom");
     if(nNom){
       const linked = V[k]||[];
       const updSugg = () => {
-        const q = norm(nNom.value + " " + $("#nPrenom").value);
         const el = $("#addSugg");
         if(norm(nNom.value).length < 2){ el.innerHTML=""; return; }
-        const terms = q.split(/\s+/).filter(Boolean);
+        const terms = norm(nNom.value + " " + $("#nPrenom").value).split(/\s+/).filter(Boolean);
         const hits = Object.values(P).filter(p => !linked.includes(p.id) && terms.every(t => norm(p.nom+" "+p.prenom).includes(t))).slice(0,4);
         el.innerHTML = hits.length ? `<span class="label">Déjà connu ?</span>` + hits.map(p =>
           `<button data-pick="${esc(p.id)}"><span><b>${esc(fullName(p))}</b></span><span class="sub">${esc(p.societe||"—")}</span></button>`).join("") : "";
@@ -440,9 +541,9 @@ details summary{cursor:pointer;font-weight:600}
       };
       nNom.addEventListener("input", updSugg); $("#nPrenom").addEventListener("input", updSugg);
       const readNew = () => {
-        const nom = nNom.value.trim(), prenom = $("#nPrenom").value.trim(), societe = $("#nSoc").value.trim();
+        const nom = nNom.value.trim(), prenom = $("#nPrenom").value.trim(), societe = $("#nSoc").value.trim(), note = $("#nNote").value.trim();
         if(!nom){ toast("Indique au moins le nom."); nNom.focus(); return null; }
-        const id = createPerson(nom, prenom, societe); linkPerson(k, id); return id;
+        const id = createPerson(nom, prenom, societe, note); linkPerson(k, id); return id;
       };
       const aa = $("#addArrive"); if(aa) aa.addEventListener("click", () => { const id=readNew(); if(!id) return; cur.selArr=new Set([id]); doArrival(k); });
       const am = $("#addMore"); if(am) am.addEventListener("click", () => { const id=readNew(); if(!id) return; cur.selArr.add(id); cur.add=true; renderResult(); $("#nNom").focus(); toast("Enregistré. Ajoute le passager suivant."); });
@@ -455,16 +556,19 @@ details summary{cursor:pointer;font-weight:600}
     const ids = [...cur.selArr].filter(id => P[id] && !openPids.has(id));
     if(!ids.length) return;
     const now = new Date(), grp = uid();
-    for(const id of ids){ const p=P[id]; passages.push({ id:uid(), grp, pid:id, cle:k, plaque:fmtPlate(k), nom:p.nom||"", prenom:p.prenom||"", societe:p.societe||"", arrivee:now.toISOString(), depart:null, plaqueDepart:null, jour:dayOf(now) }); }
-    if(!savePass()){ passages.splice(-ids.length); return; }
-    toast(ids.length===1 ? `Arrivée ${hm(now.toISOString())} · ${fullName(P[ids[0]])}` : `Arrivée ${hm(now.toISOString())} · ${ids.length} personnes`);
+    const added = ids.map(id => { const p=P[id]; return { id:uid(), grp, pid:id, cle:k, plaque:fmtPlate(k), nom:p.nom||"", prenom:p.prenom||"", societe:p.societe||"", arrivee:now.toISOString(), depart:null, plaqueDepart:null, jour:dayOf(now) }; });
+    passages.push(...added);
+    if(!savePass()){ passages.splice(-added.length); return; }
+    const msg = ids.length===1 ? `Arrivée ${hmOf(now)} · ${fullName(P[ids[0]])}` : `Arrivée ${hmOf(now)} · ${ids.length} personnes`;
+    toast(msg, { label:"Annuler", fn:() => { const set=new Set(added.map(a=>a.id)); passages = passages.filter(r => !set.has(r.id)); savePass(); toast("Arrivée annulée."); renderAll(); } });
     plateInput.value=""; renderAll(); plateInput.focus();
   }
   function depart(rows, plate){
     const now = new Date().toISOString();
     for(const r of rows){ r.depart = now; r.plaqueDepart = plate; }
     if(!savePass()){ for(const r of rows){ r.depart=null; r.plaqueDepart=null; } return false; }
-    toast(rows.length===1 ? `Départ ${hm(now)} · ${fullName(rows[0])}` : `Départ ${hm(now)} · ${rows.length} personnes`);
+    const msg = rows.length===1 ? `Départ ${hm(now)} · ${fullName(rows[0])}` : `Départ ${hm(now)} · ${rows.length} personnes`;
+    toast(msg, { label:"Annuler", fn:() => { for(const r of rows){ r.depart=null; r.plaqueDepart=null; } savePass(); toast("Départ annulé."); renderAll(); } });
     return true;
   }
   function doDeparture(k){
@@ -484,8 +588,8 @@ details summary{cursor:pointer;font-weight:600}
     el.innerHTML = list.map(g => `<div class="grp">
       <div class="gh"><span class="t">${hm(g[0].arrivee)}</span><span class="pl">${esc(g[0].plaque)}</span>
         ${g.length>1 ? `<button class="btn small" data-gdep="${esc(g[0].grp||g[0].id)}">Tous partent</button>` : ""}</div>
-      ${g.map(r => `<div class="gp"><div class="m"><b>${esc(fullName(r))}</b><span class="sub">${esc(r.societe||"—")}</span></div>
-        <button class="btn small" data-pdep="${esc(r.id)}">Départ</button></div>`).join("")}
+      ${g.map(r => `<div class="gp"><div class="m"><b>${esc(fullName(r))}</b><span class="sub">${esc(r.societe||"—")}${pnote(P[r.pid])}</span></div>
+        <div class="acts"><button class="btn small" data-badge="${esc(r.id)}">Badge</button><button class="btn small" data-pdep="${esc(r.id)}">Départ</button></div></div>`).join("")}
     </div>`).join("") + `<p class="hint" style="padding:10px 14px">Ici, le départ se fait avec le même véhicule qu'à l'arrivée. Si quelqu'un repart dans une autre voiture, tape la plaque de cette voiture en haut.</p>`;
     el.querySelectorAll("[data-gdep]").forEach(b => b.addEventListener("click", () => {
       const g = groups.get(b.dataset.gdep); if(depart(g, g[0].plaque)) renderAll();
@@ -493,14 +597,19 @@ details summary{cursor:pointer;font-weight:600}
     el.querySelectorAll("[data-pdep]").forEach(b => b.addEventListener("click", () => {
       const r = open.find(x=>x.id===b.dataset.pdep); if(r && depart([r], r.plaque)) renderAll();
     }));
+    el.querySelectorAll("[data-badge]").forEach(b => b.addEventListener("click", () => {
+      const r = open.find(x=>x.id===b.dataset.badge); if(!r) return;
+      showTab("badges"); $("#bNom").value=r.nom||""; $("#bPrenom").value=r.prenom||""; $("#bSoc").value=r.societe||""; $("#bNum").focus();
+    }));
   }
 
   // ---------- HISTORIQUE ----------
   const histDate = $("#histDate");
   histDate.value = dayOf(new Date());
-  histDate.addEventListener("change", renderHistory);
+  let editId = null, editDelAsk = false;
+  histDate.addEventListener("change", () => { editId=null; renderHistory(); });
   $("#histSearch").addEventListener("input", renderHistory);
-  function shiftDay(n){ const d = new Date(histDate.value+"T12:00:00"); d.setDate(d.getDate()+n); histDate.value = dayOf(d); renderHistory(); }
+  function shiftDay(n){ const d = new Date(histDate.value+"T12:00:00"); d.setDate(d.getDate()+n); histDate.value = dayOf(d); editId=null; renderHistory(); }
   $("#dayPrev").addEventListener("click", () => shiftDay(-1));
   $("#dayNext").addEventListener("click", () => shiftDay(1));
 
@@ -520,11 +629,52 @@ details summary{cursor:pointer;font-weight:600}
     if(!rows.length){ el.innerHTML = `<div class="empty">${all.length ? "Aucun résultat pour ce filtre." : "Aucun passage enregistré ce jour-là."}</div>`; return; }
     el.innerHTML = rows.map(r => {
       const other = r.depart && r.plaqueDepart && r.plaqueDepart !== r.plaque;
-      return `<div class="hrow">
+      const nextDay = r.depart && dayOf(new Date(r.depart)) !== r.jour;
+      let h = `<div class="hrow">
       <div class="times"><span class="a">${hm(r.arrivee)}</span><span class="d">${r.depart ? hm(r.depart) : "—"}</span></div>
       <div class="m"><b>${esc(fullName(r))}</b><span class="sub">${esc(r.societe||"—")}</span>
       <span class="sub">Arrivé avec <span class="pl">${esc(r.plaque)}</span>${other ? ` · reparti avec <span class="pl swap">${esc(r.plaqueDepart)}</span>` : ""}</span>
-      <span class="sub">${r.depart ? "Durée " + dur(r.arrivee,r.depart) : '<span class="pill in" style="font-size:.75rem">sur site</span>'}</span></div></div>`; }).join("");
+      <span class="sub">${r.depart ? "Durée " + dur(r.arrivee,r.depart) + (nextDay ? " · départ le " + dmy(r.depart) : "") : '<span class="pill in" style="font-size:.75rem">sur site</span>'}</span></div>
+      ${editId===r.id ? "<span></span>" : `<button class="btn small" data-edit="${esc(r.id)}">Modifier</button>`}`;
+      if(editId===r.id){
+        h += `<div class="editbox">
+          <div class="row">
+            <div class="field"><label class="label" for="eA">Heure d'arrivée</label><input type="time" id="eA" value="${hm(r.arrivee)}"></div>
+            <div class="field"><label class="label" for="eD">Heure de départ</label><input type="time" id="eD" value="${hm(r.depart)}"></div>
+          </div>
+          <p class="hint">Vide l'heure de départ si la personne est en fait toujours sur site. Un départ plus tôt que l'arrivée compte pour le lendemain.</p>
+          <div class="confirm"><button class="btn small primary" id="eSave">Enregistrer</button><button class="btn small" id="eCancel">Annuler</button></div>
+          <div class="confirm">${editDelAsk
+            ? `<span>Supprimer ce passage ?</span><button class="btn small danger" id="eDelGo">Oui, supprimer</button><button class="btn small" id="eDelNo">Non</button>`
+            : `<button class="btn small danger" id="eDel">Supprimer ce passage (erreur de saisie)</button>`}</div>
+        </div>`;
+      }
+      return h + `</div>`;
+    }).join("");
+    el.querySelectorAll("[data-edit]").forEach(b => b.addEventListener("click", () => { editId=b.dataset.edit; editDelAsk=false; renderHistory(); }));
+    const r = passages.find(x => x.id===editId);
+    if(r && $("#eSave")){
+      $("#eSave").addEventListener("click", () => {
+        const a = $("#eA").value, d = $("#eD").value;
+        if(!a){ toast("Indique l'heure d'arrivée."); return; }
+        const arr = atLocal(r.jour, a);
+        let dep = d ? atLocal(r.jour, d) : null;
+        if(dep && dep < arr) dep.setDate(dep.getDate()+1);
+        r.arrivee = arr.toISOString();
+        r.depart = dep ? dep.toISOString() : null;
+        if(dep && !r.plaqueDepart) r.plaqueDepart = r.plaque;
+        if(!dep) r.plaqueDepart = null;
+        savePass(); editId=null; toast("Passage corrigé."); renderAll(); renderHistory();
+      });
+      $("#eCancel").addEventListener("click", () => { editId=null; renderHistory(); });
+      const del=$("#eDel"); if(del) del.addEventListener("click", () => { editDelAsk=true; renderHistory(); });
+      const dno=$("#eDelNo"); if(dno) dno.addEventListener("click", () => { editDelAsk=false; renderHistory(); });
+      const dgo=$("#eDelGo"); if(dgo) dgo.addEventListener("click", () => {
+        const idx = passages.indexOf(r); passages.splice(idx,1); savePass(); editId=null;
+        toast("Passage supprimé.", { label:"Annuler", fn:() => { passages.splice(idx,0,r); savePass(); renderAll(); renderHistory(); } });
+        renderAll(); renderHistory();
+      });
+    }
   }
 
   async function shareFile(filename, text, type){
@@ -546,27 +696,120 @@ details summary{cursor:pointer;font-weight:600}
     shareFile(`filtrage-${histDate.value}.csv`, "﻿"+lines.join("\r\n"), "text/csv");
   });
 
+  // ---------- BADGES / CLÉS ----------
+  let bTouched = false, bDelAsk = null;
+  function refreshBadgeClock(){ if(bTouched) return; const n=new Date(); $("#bDate").value = dayOf(n); $("#bHeure").value = hmOf(n); }
+  ["bDate","bHeure"].forEach(id => $("#"+id).addEventListener("input", () => bTouched = true));
+  function updBadgeSugg(){
+    const el = $("#bSugg");
+    const terms = norm($("#bNom").value + " " + $("#bPrenom").value).split(/\s+/).filter(Boolean);
+    if(!terms.length || norm($("#bNom").value).length < 2){ el.innerHTML=""; return; }
+    const hits = Object.values(P).filter(p => terms.every(t => norm(p.nom+" "+p.prenom).includes(t)))
+      .filter(p => !(norm(p.nom)===norm($("#bNom").value) && norm(p.prenom)===norm($("#bPrenom").value))).slice(0,4);
+    el.innerHTML = hits.length ? `<span class="label">Déjà connu ?</span>` + hits.map(p =>
+      `<button data-bpick="${esc(p.id)}"><span><b>${esc(fullName(p))}</b></span><span class="sub">${esc(p.societe||"—")}</span></button>`).join("") : "";
+    el.querySelectorAll("[data-bpick]").forEach(b => b.addEventListener("click", () => {
+      const p = P[b.dataset.bpick]; $("#bNom").value=p.nom; $("#bPrenom").value=p.prenom; $("#bSoc").value=p.societe||""; el.innerHTML="";
+    }));
+  }
+  $("#bNom").addEventListener("input", updBadgeSugg); $("#bPrenom").addEventListener("input", updBadgeSugg);
+  $("#bSave").addEventListener("click", () => {
+    const numero = $("#bNum").value.trim(), nom = $("#bNom").value.trim(), prenom = $("#bPrenom").value.trim(), societe = $("#bSoc").value.trim();
+    const d = $("#bDate").value, h = $("#bHeure").value;
+    if(!numero){ toast("Indique le numéro du badge ou de la clé."); $("#bNum").focus(); return; }
+    if(!nom){ toast("Indique au moins le nom."); $("#bNom").focus(); return; }
+    if(!d || !h){ toast("Indique la date et l'heure."); return; }
+    const dup = openBadges().find(b => norm(b.numero) === norm(numero));
+    if(dup){ toast(`Le n° ${numero} est déjà noté chez ${fullName(dup)}. Restitue-le d'abord.`); return; }
+    const b = { id:uid(), numero, nom:nom.toUpperCase(), prenom, societe, remis:atLocal(d,h).toISOString(), rendu:null };
+    B.push(b); if(!saveB()){ B.pop(); return; }
+    ["bNum","bNom","bPrenom","bSoc"].forEach(id => $("#"+id).value=""); $("#bSugg").innerHTML="";
+    bTouched = false; refreshBadgeClock();
+    toast(`Badge ${numero} remis à ${fullName(b)}.`, { label:"Annuler", fn:() => { B = B.filter(x=>x!==b); saveB(); renderBadges(); renderRappel(); } });
+    renderBadges(); renderRappel();
+  });
+  function renderBadges(){
+    $("#socListB").innerHTML = societes().map(s=>`<option value="${esc(s)}">`).join("");
+    const open = openBadges().sort((a,b)=> a.remis < b.remis ? -1 : 1);
+    $("#bCount").textContent = open.length;
+    const dot = $("#badgeDot"); dot.hidden = !open.length; dot.textContent = open.length;
+    const el = $("#bOpen");
+    el.innerHTML = open.length ? open.map(b => `<div class="item">
+      <span class="badgeno">${esc(b.numero)}</span>
+      <div class="m"><b>${esc(fullName(b))}</b><span class="sub">${esc(b.societe||"—")} · remis le ${dmy(b.remis)} à ${hm(b.remis)}</span></div>
+      <div class="acts">${bDelAsk===b.id
+        ? `<button class="btn small danger" data-bdel="${esc(b.id)}">Supprimer</button><button class="btn small" data-bno="1">Non</button>`
+        : `<button class="btn small ok" data-bret="${esc(b.id)}">Restituer</button><button class="x" data-bask="${esc(b.id)}" aria-label="Supprimer (erreur)">×</button>`}</div></div>`).join("")
+      : `<div class="empty">Aucun badge ni clé en circulation.</div>`;
+    el.querySelectorAll("[data-bret]").forEach(x => x.addEventListener("click", () => {
+      const b = B.find(y=>y.id===x.dataset.bret); b.rendu = new Date().toISOString(); saveB();
+      toast(`${b.numero} rendu à ${hm(b.rendu)}.`, { label:"Annuler", fn:() => { b.rendu=null; saveB(); renderBadges(); renderRappel(); } });
+      renderBadges(); renderRappel();
+    }));
+    el.querySelectorAll("[data-bask]").forEach(x => x.addEventListener("click", () => { bDelAsk = x.dataset.bask; renderBadges(); }));
+    el.querySelectorAll("[data-bno]").forEach(x => x.addEventListener("click", () => { bDelAsk = null; renderBadges(); }));
+    el.querySelectorAll("[data-bdel]").forEach(x => x.addEventListener("click", () => { B = B.filter(y=>y.id!==x.dataset.bdel); saveB(); bDelAsk=null; toast("Remise supprimée."); renderBadges(); renderRappel(); }));
+
+    const done = B.filter(b => b.rendu).sort((a,b)=> a.rendu < b.rendu ? 1 : -1).slice(0,30);
+    $("#bDone").innerHTML = done.length ? done.map(b => `<div class="item">
+      <span class="badgeno" style="color:var(--muted)">${esc(b.numero)}</span>
+      <div class="m"><b>${esc(fullName(b))}</b><span class="sub">${esc(b.societe||"—")}</span>
+      <span class="sub">Remis ${dmy(b.remis)} ${hm(b.remis)} · rendu ${dmy(b.rendu)} ${hm(b.rendu)}</span></div><span></span></div>`).join("")
+      : `<div class="empty">Rien pour l'instant.</div>`;
+  }
+
   // ---------- PERSONNES ----------
-  let pendingDelete = null;
+  let pEdit = null, pDelAsk = false;
   $("#persSearch").addEventListener("input", renderPersons);
   function renderPersons(){
     const q = norm($("#persSearch").value), qk = key(q);
     const all = Object.values(P).sort((a,b)=> fullName(a).localeCompare(fullName(b)));
     $("#persCount").textContent = all.length + " enregistrée" + (all.length>1?"s":"");
-    const list = all.filter(p => !q || norm([p.nom,p.prenom,p.societe].join(" ")).includes(q) || (qk && platesOf(p.id).some(k=>k.includes(qk))));
+    const list = all.filter(p => !q || norm([p.nom,p.prenom,p.societe,p.note].join(" ")).includes(q) || (qk && platesOf(p.id).some(k=>k.includes(qk))));
     const el = $("#persList");
     if(!all.length){ el.innerHTML = `<div class="empty">Aucune personne enregistrée. Importe ta liste ci-dessus, ou tape une nouvelle plaque dans Filtrage.</div>`; return; }
     if(!list.length){ el.innerHTML = `<div class="empty">Aucun résultat.</div>`; return; }
-    el.innerHTML = list.map(p => `<div class="item">
-      <div class="m" style="grid-column:1/3"><div><b>${esc(fullName(p))}</b></div><div class="sub">${esc(p.societe||"—")}${platesOf(p.id).length ? " · "+platesOf(p.id).map(k=>`<span class="pl" style="font-size:.95rem">${esc(fmtPlate(k))}</span>`).join(", ") : ""}</div></div>
-      ${pendingDelete===p.id ? `<span class="confirm"><button class="btn small danger" data-del="${esc(p.id)}">Supprimer</button><button class="btn small" data-cancel="1">Annuler</button></span>`
-        : `<button class="btn small" data-ask="${esc(p.id)}">Retirer</button>`}</div>`).join("");
-    el.querySelectorAll("[data-ask]").forEach(b => b.addEventListener("click", () => { pendingDelete=b.dataset.ask; renderPersons(); }));
-    el.querySelectorAll("[data-cancel]").forEach(b => b.addEventListener("click", () => { pendingDelete=null; renderPersons(); }));
-    el.querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", () => {
-      const id=b.dataset.del; for(const k of platesOf(id)) unlinkPerson(k,id); delete P[id]; saveP(); pendingDelete=null;
-      toast("Personne retirée. Son historique est conservé."); renderAll();
-    }));
+    el.innerHTML = list.map(p => {
+      const plates = platesOf(p.id);
+      if(pEdit === p.id) return `<div class="item" style="display:block"><div class="editbox" style="background:transparent;border:0;padding:0">
+        <div class="row">
+          <div class="field"><label class="label" for="pNom">Nom</label><input id="pNom" value="${esc(p.nom)}" autocomplete="off" autocorrect="off" autocapitalize="characters"></div>
+          <div class="field"><label class="label" for="pPrenom">Prénom</label><input id="pPrenom" value="${esc(p.prenom)}" autocomplete="off" autocorrect="off"></div>
+        </div>
+        <div class="field"><label class="label" for="pSoc">Société</label><input id="pSoc" value="${esc(p.societe)}" autocomplete="off" autocorrect="off"></div>
+        <div class="field"><label class="label" for="pNote">Note</label><textarea id="pNote" rows="2" placeholder="ex. Livreur, quai 3, prévenir M. Dupont">${esc(p.note||"")}</textarea></div>
+        <span class="label">Véhicules</span>
+        <div class="chips">${plates.length ? plates.map(k => `<span class="chip"><span class="pl">${esc(fmtPlate(k))}</span><button class="x" data-punlink="${esc(k)}" aria-label="Retirer">×</button></span>`).join("") : '<span class="sub">Aucun véhicule</span>'}</div>
+        <div class="row"><div class="field"><input id="pPlate" placeholder="Ajouter une plaque" aria-label="Ajouter une plaque" autocomplete="off" autocorrect="off" autocapitalize="characters"></div><button class="btn" id="pPlateAdd" style="flex:0 0 auto">Ajouter</button></div>
+        <div class="confirm"><button class="btn small primary" id="pSave">Enregistrer</button><button class="btn small" id="pCancel">Annuler</button></div>
+        <div class="confirm">${pDelAsk
+          ? `<span>Supprimer cette personne ?</span><button class="btn small danger" id="pDelGo">Oui</button><button class="btn small" id="pDelNo">Non</button>`
+          : `<button class="btn small danger" id="pDel">Supprimer la personne</button>`}</div>
+      </div></div>`;
+      return `<div class="item">
+      <div class="m" style="grid-column:1/3"><b>${esc(fullName(p))}</b><span class="sub">${esc(p.societe||"—")}${plates.length ? " · "+plates.map(k=>`<span class="pl" style="font-size:.95rem">${esc(fmtPlate(k))}</span>`).join(", ") : ""}</span>${pnote(p)}</div>
+      <button class="btn small" data-pedit="${esc(p.id)}">Modifier</button></div>`;
+    }).join("");
+    el.querySelectorAll("[data-pedit]").forEach(b => b.addEventListener("click", () => { pEdit=b.dataset.pedit; pDelAsk=false; renderPersons(); }));
+    const p = P[pEdit];
+    if(p && $("#pSave")){
+      el.querySelectorAll("[data-punlink]").forEach(b => b.addEventListener("click", () => { unlinkPerson(b.dataset.punlink, p.id); renderPersons(); }));
+      $("#pPlateAdd").addEventListener("click", () => { const k=key($("#pPlate").value); if(k.length<4){ toast("Plaque trop courte."); return; } linkPerson(k, p.id); renderPersons(); });
+      $("#pSave").addEventListener("click", () => {
+        const nom=$("#pNom").value.trim(); if(!nom){ toast("Le nom ne peut pas être vide."); return; }
+        p.nom=nom.toUpperCase(); p.prenom=$("#pPrenom").value.trim(); p.societe=$("#pSoc").value.trim(); p.note=$("#pNote").value.trim();
+        saveP();
+        for(const r of passages) if(r.pid===p.id){ r.nom=p.nom; r.prenom=p.prenom; r.societe=p.societe; }
+        savePass(); pEdit=null; toast("Fiche mise à jour."); renderAll(); renderPersons();
+      });
+      $("#pCancel").addEventListener("click", () => { pEdit=null; renderPersons(); });
+      const del=$("#pDel"); if(del) del.addEventListener("click", () => { pDelAsk=true; renderPersons(); });
+      const dno=$("#pDelNo"); if(dno) dno.addEventListener("click", () => { pDelAsk=false; renderPersons(); });
+      const dgo=$("#pDelGo"); if(dgo) dgo.addEventListener("click", () => {
+        for(const k of platesOf(p.id)) unlinkPerson(k,p.id); delete P[p.id]; saveP(); pEdit=null;
+        toast("Personne supprimée. Son historique est conservé."); renderAll(); renderPersons();
+      });
+    }
   }
   $("#importBtn").addEventListener("click", () => {
     const lines = $("#importText").value.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
@@ -575,24 +818,32 @@ details summary{cursor:pointer;font-weight:600}
       const parts = l.split(/[;\t,]/).map(s=>s.trim());
       const k = key(parts[0]);
       if(!k || k.length<4 || !parts[1] || /^plaque$/i.test(parts[0])){ bad++; continue; }
-      linkPerson(k, createPerson(parts[1], parts[2]||"", parts[3]||"")); ok++;
+      linkPerson(k, createPerson(parts[1], parts[2]||"", parts[3]||"", "")); ok++;
     }
     if(ok) $("#importText").value="";
     toast(`${ok} ligne(s) importée(s)` + (bad? ` · ${bad} ignorée(s)` : ""));
-    renderAll();
+    renderAll(); renderPersons();
   });
 
   // ---------- RÉGLAGES ----------
   function renderSettings(){
+    $("#rappelIn").value = S.rappel || "";
     $("#stPers").textContent = Object.keys(P).length;
     $("#stVeh").textContent = Object.keys(V).length;
     $("#stPass").textContent = passages.length;
+    $("#stBadge").textContent = B.length;
     const last = load(K.backup, null);
     $("#stBackup").textContent = last ? new Date(last).toLocaleDateString("fr-FR",{day:"numeric",month:"short",year:"numeric"}) : "jamais";
     $("#pinState").textContent = load(K.pin, null) ? "Un code est demandé à l'ouverture de l'appli." : "Aucun code. Tu peux en ajouter un en plus du verrouillage de ton iPhone.";
   }
+  $("#rappelSave").addEventListener("click", () => {
+    const v = $("#rappelIn").value; if(!v){ toast("Choisis une heure."); return; }
+    S.rappel = v; saveS(); try{ localStorage.removeItem(K.dismiss); }catch(e){} $("#rappel").dataset.sig=""; toast(`Rappel réglé à ${v}.`); renderRappel();
+  });
+  $("#rappelOff").addEventListener("click", () => { S.rappel = ""; saveS(); toast("Rappel désactivé."); renderSettings(); renderRappel(); });
+
   async function doBackup(){
-    const data = JSON.stringify({ app:"registre-filtrage", version:2, date:new Date().toISOString(), personnes:P, vehicules:V, passages }, null, 1);
+    const data = JSON.stringify({ app:"registre-filtrage", version:3, date:new Date().toISOString(), personnes:P, vehicules:V, notesVehicules:VN, passages, badges:B, reglages:S }, null, 1);
     const ok = await shareFile(`registre-sauvegarde-${dayOf(new Date())}.json`, data, "application/json");
     if(ok){ save(K.backup, new Date().toISOString()); renderBackupHint(); renderSettings(); }
   }
@@ -605,10 +856,12 @@ details summary{cursor:pointer;font-weight:600}
       if(d.app!=="registre-filtrage" || typeof d.personnes!=="object" || !Array.isArray(d.passages)) throw 0;
       let nP, nV; const nPass = d.passages;
       if(d.version >= 2 && d.vehicules){ nP = d.personnes; nV = d.vehicules; } else { const m = migrateV1(d.personnes, nPass); nP=m.P; nV=m.V; }
-      $("#restoreConfirm").innerHTML = `<div class="notice"><span>Ce fichier contient <b>${Object.keys(nP).length}</b> personnes et <b>${nPass.length}</b> passages (sauvegarde du ${new Date(d.date).toLocaleDateString("fr-FR")}). Il remplacera tout ce qui est actuellement dans l'appli.</span>
+      const nVN = d.notesVehicules || {}, nB = Array.isArray(d.badges) ? d.badges : [], nS = Object.assign({ rappel:"18:00" }, d.reglages || {});
+      $("#restoreConfirm").innerHTML = `<div class="notice"><span>Ce fichier contient <b>${Object.keys(nP).length}</b> personnes, <b>${nPass.length}</b> passages et <b>${nB.length}</b> remises de badges (sauvegarde du ${new Date(d.date).toLocaleDateString("fr-FR")}). Il remplacera tout ce qui est actuellement dans l'appli.</span>
         <div class="confirm"><button class="btn primary small" id="restoreGo">Remplacer</button><button class="btn small" id="restoreNo">Annuler</button></div></div>`;
       $("#restoreGo").addEventListener("click", () => {
-        P=nP; V=nV; passages=nPass; saveP(); saveV(); savePass(); $("#restoreConfirm").innerHTML=""; toast("Sauvegarde restaurée."); renderAll(); renderSettings();
+        P=nP; V=nV; VN=nVN; passages=nPass; B=nB; S=nS; saveP(); saveV(); saveVN(); savePass(); saveB(); saveS();
+        $("#restoreConfirm").innerHTML=""; toast("Sauvegarde restaurée."); renderAll(); renderSettings();
       });
       $("#restoreNo").addEventListener("click", () => { $("#restoreConfirm").innerHTML=""; });
     }catch(err){ toast("Ce fichier n'est pas une sauvegarde du registre."); }
@@ -626,7 +879,7 @@ details summary{cursor:pointer;font-weight:600}
     $("#wipeZone").innerHTML = `<button class="btn danger" id="wipeAsk">Tout effacer</button>`;
     $("#wipeAsk").addEventListener("click", () => {
       $("#wipeZone").innerHTML = `<div class="confirm"><span>Vraiment tout effacer ?</span><button class="btn small danger" id="wipeGo">Oui, tout effacer</button><button class="btn small" id="wipeNo">Annuler</button></div>`;
-      $("#wipeGo").addEventListener("click", () => { P={}; V={}; passages=[]; saveP(); saveV(); savePass(); try{ localStorage.removeItem(K.backup); }catch(e){} wireWipe(); toast("Registre effacé."); renderAll(); renderSettings(); });
+      $("#wipeGo").addEventListener("click", () => { P={}; V={}; VN={}; passages=[]; B=[]; saveP(); saveV(); saveVN(); savePass(); saveB(); try{ localStorage.removeItem(K.backup); localStorage.removeItem(K.dismiss); }catch(e){} wireWipe(); toast("Registre effacé."); renderAll(); renderSettings(); });
       $("#wipeNo").addEventListener("click", wireWipe);
     });
   }
@@ -643,10 +896,16 @@ details summary{cursor:pointer;font-weight:600}
   $("#pinIn").addEventListener("keydown", e => { if(e.key==="Enter") tryUnlock(); });
   document.addEventListener("visibilitychange", () => {
     if(document.hidden) hiddenAt = Date.now();
-    else if(hiddenAt && Date.now()-hiddenAt > 3*60000) lockIfNeeded();
+    else { if(hiddenAt && Date.now()-hiddenAt > 3*60000) lockIfNeeded(); tick(); refreshBadgeClock(); }
   });
 
-  function renderAll(){ cur.selDep = null; cur.k = null; renderResult(); renderOnsite(); renderBackupHint(); if(!$("#p-historique").hidden) renderHistory(); if(!$("#p-personnes").hidden) renderPersons(); }
+  function renderAll(){
+    cur.selDep = null; cur.k = null;
+    renderResult(); renderOnsite(); renderBackupHint(); renderBadges(); $("#rappel").dataset.sig=""; renderRappel();
+    if(!$("#p-historique").hidden) renderHistory();
+  }
+  refreshBadgeClock();
+  tick();
   renderAll();
   lockIfNeeded();
 
