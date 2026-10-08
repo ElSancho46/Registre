@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Registre de filtrage</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Filtrage">
+<meta name="theme-color" content="#14213f">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex,nofollow">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+:root{
+  --bg:#eef1f6; --surface:#ffffff; --line:#d5dbe6; --fg:#141b2b; --muted:#5b667c;
+  --eu:#1d3f9b; --eu-ink:#ffffff; --top:#14213f; --top-ink:#ffffff;
+  --in:#13824f; --on-in:#ffffff; --in-soft:#dff3e9; --out:#c46a0a; --on-out:#1b1206; --out-soft:#fbeedd; --danger:#b42318;
+  --f-display:"Avenir Next Condensed","AvenirNextCondensed-Bold","Arial Narrow",system-ui,sans-serif;
+  --f-body:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#0f1420; --surface:#18202f; --line:#2a3447; --fg:#e8ecf4; --muted:#9aa5ba;
+  --eu:#4f74d9; --eu-ink:#ffffff; --top:#0a0f1b; --top-ink:#e8ecf4;
+  --in:#3fc287; --on-in:#0c1a12; --in-soft:#173527; --out:#f0a24a; --on-out:#1b1206; --out-soft:#3a2a15; --danger:#f2786b;
+  color-scheme:dark}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:16px;line-height:1.45;min-height:100vh}
+.topbar{background:var(--top);color:var(--top-ink);padding:calc(env(safe-area-inset-top,0px) + 10px) 16px 12px;display:flex;align-items:baseline;justify-content:space-between;gap:12px;position:sticky;top:0;z-index:10}
+h1{font:700 1.45rem var(--f-display);letter-spacing:.03em;margin:0;text-transform:uppercase}
+.clock{white-space:nowrap;font:600 1.15rem var(--f-display);opacity:.8;font-variant-numeric:tabular-nums}
+.wrap{max-width:760px;margin:0 auto;padding-inline:16px;padding-block:14px calc(96px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:16px}
+nav{position:fixed;left:0;right:0;bottom:0;z-index:10;background:var(--surface);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(4,1fr);padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px))}
+nav button{font:600 .72rem var(--f-body);border:0;background:transparent;color:var(--muted);padding:6px 2px;border-radius:10px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer}
+nav button svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+nav button[aria-selected="true"]{color:var(--eu)}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--eu);outline-offset:2px}
+.panel{display:flex;flex-direction:column;gap:16px}
+.label{font:600 .76rem var(--f-body);text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.plate{display:flex;align-items:stretch;background:#fff;border:3px solid #141b2b;border-radius:10px;overflow:hidden;min-height:76px}
+.plate .band{background:#1d3f9b;color:#fff;width:46px;flex:none;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:8px;gap:4px}
+.plate .band svg{width:22px;height:22px}
+.plate .band b{font:700 1.2rem var(--f-display)}
+.plate input{flex:1;min-width:0;border:0;background:transparent;color:#141b2b;font:700 clamp(2rem,9.5vw,2.9rem) var(--f-display);letter-spacing:.06em;text-align:center;text-transform:uppercase;padding:0 8px}
+.plate input::placeholder{color:#a3acbd}
+.plate input:focus-visible{outline:none}
+.plate:focus-within{box-shadow:0 0 0 4px color-mix(in srgb,var(--eu) 40%,transparent)}
+.hint{color:var(--muted);font-size:.92rem;margin:0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:14px}
+.card h2{font:700 1.15rem var(--f-display);text-transform:uppercase;letter-spacing:.04em;margin:0}
+.who{display:flex;flex-direction:column;gap:2px}
+.who .name{font:700 1.6rem/1.1 var(--f-display);text-transform:uppercase;letter-spacing:.02em}
+.who .co{font-size:1.05rem;color:var(--muted)}
+.pill{align-self:flex-start;font:600 .85rem var(--f-body);padding:4px 10px;border-radius:99px}
+.pill.in{background:var(--in-soft);color:var(--in)}
+.pill.off{background:var(--bg);color:var(--muted);border:1px solid var(--line)}
+.big{font:700 1.35rem var(--f-display);text-transform:uppercase;letter-spacing:.08em;border:0;border-radius:12px;padding:17px;cursor:pointer;width:100%}
+.big.arr{background:var(--in);color:var(--on-in)}
+.big.dep{background:var(--out);color:var(--on-out)}
+.big:disabled{opacity:.5}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row > *{flex:1 1 140px;min-width:0}
+.field{display:flex;flex-direction:column;gap:4px}
+.field input,.field textarea,.search{font:500 16px var(--f-body);color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:11px 12px;width:100%}
+.btn{font:600 .95rem var(--f-body);border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:9px;padding:10px 14px;cursor:pointer}
+.btn.primary{background:var(--eu);border-color:var(--eu);color:var(--eu-ink)}
+.btn.danger{color:var(--danger);border-color:var(--danger)}
+.btn.small{padding:7px 11px;font-size:.88rem}
+.sugg{display:flex;flex-direction:column;gap:6px}
+.sugg button{display:flex;justify-content:space-between;gap:10px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 12px;cursor:pointer;color:var(--fg);font:inherit}
+.pl{font:700 1.05rem var(--f-display);letter-spacing:.05em;white-space:nowrap}
+.sectionhead{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.count{font:700 1.1rem var(--f-display);font-variant-numeric:tabular-nums}
+.list{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden}
+.item{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:12px 14px;border-top:1px solid var(--line)}
+.item:first-child{border-top:0}
+.item .t{font:700 1.15rem var(--f-display);font-variant-numeric:tabular-nums;color:var(--in)}
+.item .m{min-width:0}
+.item .m div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sub{color:var(--muted);font-size:.9rem}
+.empty{padding:22px 16px;color:var(--muted);text-align:center}
+.daynav{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center}
+.daynav input{font:600 16px var(--f-body);padding:10px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--fg);width:100%;text-align:center}
+.tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.tools .search{flex:1 1 180px;width:auto;background:var(--surface)}
+.stats{display:flex;gap:18px;flex-wrap:wrap;color:var(--muted);font-size:.92rem}
+.stats b{color:var(--fg);font-family:var(--f-display);font-size:1.15rem}
+.hrow{display:grid;grid-template-columns:4.2rem 1fr;gap:12px;padding:12px 14px;border-top:1px solid var(--line);align-items:start}
+.hrow:first-child{border-top:0}
+.times{display:flex;flex-direction:column;font:700 1.1rem/1.2 var(--f-display);font-variant-numeric:tabular-nums}
+.times .a{color:var(--in)} .times .d{color:var(--out)}
+.hrow .m{min-width:0;display:flex;flex-direction:column;gap:1px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:12px 18px;border-radius:10px;font-weight:600;max-width:calc(100% - 32px);z-index:30;text-align:center}
+.confirm{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.notice{background:var(--out-soft);color:var(--fg);border:1px solid var(--out);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+details summary{cursor:pointer;font-weight:600}
+.lock{position:fixed;inset:0;z-index:50;background:var(--top);color:var(--top-ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px}
+.lock h2{font:700 1.5rem var(--f-display);text-transform:uppercase;letter-spacing:.05em;margin:0}
+.lock input{font:700 2rem var(--f-display);letter-spacing:.5em;text-align:center;width:12rem;padding:10px;border-radius:10px;border:2px solid #3a4a70;background:#0b1224;color:#fff}
+.lock .err{color:#ffb4a8;min-height:1.4em;margin:0}
+.kv{display:flex;justify-content:space-between;gap:12px;font-size:.95rem}
+.kv b{font-variant-numeric:tabular-nums}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<div class="lock" id="lock" hidden>
+  <h2>Registre verrouillé</h2>
+  <input id="pinIn" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off" aria-label="Code">
+  <p class="err" id="pinErr"></p>
+  <button class="btn primary" id="pinBtn">Déverrouiller</button>
+</div>
+
+<header class="topbar">
+  <h1>Registre</h1>
+  <div class="clock" id="clock">--:--</div>
+</header>
+
+<div class="wrap">
+  <div class="notice" id="installHint" hidden>
+    <b>Installe l'appli sur ton iPhone</b>
+    <span>Touche le bouton Partager <span aria-hidden="true">⎙</span> de Safari, puis « Sur l'écran d'accueil ». Ouvre ensuite le registre depuis l'icône : c'est là que tes données seront gardées.</span>
+  </div>
+  <div class="notice" id="backupHint" hidden>
+    <span id="backupHintText"></span>
+    <button class="btn small" id="backupHintBtn" style="align-self:flex-start">Faire une sauvegarde</button>
+  </div>
+
+  <!-- FILTRAGE -->
+  <section class="panel" id="p-filtrage">
+    <div class="field">
+      <label class="label" for="plateInput">Plaque d'immatriculation</label>
+      <div class="plate">
+        <div class="band" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><g fill="#ffd400"><circle cx="12" cy="3.5" r="1.1"/><circle cx="16.25" cy="4.64" r="1.1"/><circle cx="19.36" cy="7.75" r="1.1"/><circle cx="20.5" cy="12" r="1.1"/><circle cx="19.36" cy="16.25" r="1.1"/><circle cx="16.25" cy="19.36" r="1.1"/><circle cx="12" cy="20.5" r="1.1"/><circle cx="7.75" cy="19.36" r="1.1"/><circle cx="4.64" cy="16.25" r="1.1"/><circle cx="3.5" cy="12" r="1.1"/><circle cx="4.64" cy="7.75" r="1.1"/><circle cx="7.75" cy="4.64" r="1.1"/></g></svg>
+          <b>F</b>
+        </div>
+        <input id="plateInput" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" placeholder="AB-123-CD" maxlength="14" enterkeyhint="go">
+      </div>
+    </div>
+    <div id="result"></div>
+    <div class="sectionhead">
+      <span class="label">Sur site en ce moment</span>
+      <span class="count" id="onsiteCount">0</span>
+    </div>
+    <div class="list" id="onsiteList"></div>
+  </section>
+
+  <!-- HISTORIQUE -->
+  <section class="panel" id="p-historique" hidden>
+    <div class="daynav">
+      <button class="btn" id="dayPrev" aria-label="Jour précédent">‹</button>
+      <input type="date" id="histDate" aria-label="Jour">
+      <button class="btn" id="dayNext" aria-label="Jour suivant">›</button>
+    </div>
+    <div class="tools">
+      <input class="search" id="histSearch" placeholder="Filtrer : nom, société, plaque" aria-label="Filtrer l'historique">
+      <button class="btn" id="exportBtn">Exporter CSV</button>
+    </div>
+    <div class="stats" id="histStats"></div>
+    <div class="list" id="histList"></div>
+  </section>
+
+  <!-- PERSONNES -->
+  <section class="panel" id="p-personnes" hidden>
+    <div class="tools">
+      <input class="search" id="persSearch" placeholder="Rechercher une personne" aria-label="Rechercher une personne">
+      <span class="count" id="persCount"></span>
+    </div>
+    <details class="card">
+      <summary>Importer ma liste existante</summary>
+      <p class="hint">Colle une ligne par personne, dans cet ordre : <b>Plaque ; Nom ; Prénom ; Société</b>. Les séparateurs « ; », « , » ou tabulation fonctionnent. Une plaque déjà connue est mise à jour.</p>
+      <div class="field"><textarea id="importText" rows="6" placeholder="AB-123-CD;MARTIN;Paul;Eiffage&#10;GH-456-JK;DURAND;Sophie;Veolia"></textarea></div>
+      <button class="btn primary" id="importBtn" style="align-self:flex-start">Importer</button>
+    </details>
+    <div class="list" id="persList"></div>
+  </section>
+
+  <!-- RÉGLAGES -->
+  <section class="panel" id="p-reglages" hidden>
+    <div class="card">
+      <h2>Mes données</h2>
+      <p class="hint">Tout est enregistré uniquement dans ce téléphone. Rien n'est envoyé sur internet.</p>
+      <div class="kv"><span>Personnes connues</span><b id="stPers">0</b></div>
+      <div class="kv"><span>Passages enregistrés</span><b id="stPass">0</b></div>
+      <div class="kv"><span>Dernière sauvegarde</span><b id="stBackup">jamais</b></div>
+    </div>
+    <div class="card">
+      <h2>Sauvegarde</h2>
+      <p class="hint">Si tu perds ou changes de téléphone, l'historique part avec. Fais une sauvegarde régulièrement et garde le fichier dans « Fichiers » (sur l'iPhone, pas dans iCloud si tu veux qu'il reste en local).</p>
+      <div class="row">
+        <button class="btn primary" id="backupBtn">Sauvegarder</button>
+        <button class="btn" id="restoreBtn">Restaurer un fichier</button>
+      </div>
+      <input type="file" id="restoreFile" accept=".json,application/json" hidden>
+      <div id="restoreConfirm"></div>
+    </div>
+    <div class="card">
+      <h2>Code de verrouillage</h2>
+      <p class="hint" id="pinState"></p>
+      <div class="row">
+        <div class="field"><label class="label" for="pinNew">Nouveau code (4 à 8 chiffres)</label><input id="pinNew" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off"></div>
+      </div>
+      <div class="row">
+        <button class="btn primary" id="pinSet">Enregistrer le code</button>
+        <button class="btn" id="pinOff">Retirer le code</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Tout effacer</h2>
+      <p class="hint">Supprime toutes les personnes et tout l'historique de ce téléphone. Impossible à annuler.</p>
+      <div id="wipeZone"><button class="btn danger" id="wipeAsk">Tout effacer</button></div>
+    </div>
+  </section>
+</div>
+
+<nav role="tablist">
+  <button role="tab" aria-selected="true" data-tab="filtrage"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="10" rx="2"/><path d="M6 12h3M12 12h6"/></svg>Filtrage</button>
+  <button role="tab" aria-selected="false" data-tab="historique"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Historique</button>
+  <button role="tab" aria-selected="false" data-tab="personnes"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c1.9.7 3.1 2.4 3.5 5.2"/></svg>Personnes</button>
+  <button role="tab" aria-selected="false" data-tab="reglages"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Réglages</button>
+</nav>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function(){
+  "use strict";
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const key = p => String(p||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
+  const isSIV = k => /^[A-Z]{2}\d{3}[A-Z]{2}$/.test(k);
+  const fmtPlate = k => isSIV(k) ? k.slice(0,2)+"-"+k.slice(2,5)+"-"+k.slice(5) : k;
+  const pad = n => String(n).padStart(2,"0");
+  const dayOf = d => d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+  const hm = iso => { if(!iso) return ""; const d=new Date(iso); return pad(d.getHours())+":"+pad(d.getMinutes()); };
+  const dur = (a,b) => { const m=Math.max(0,Math.round((new Date(b)-new Date(a))/60000)); return m<60? m+" min" : Math.floor(m/60)+" h "+pad(m%60); };
+  const fullName = p => [String(p.nom||"").toUpperCase(), p.prenom||""].filter(Boolean).join(" ");
+  const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+
+  // ---------- STOCKAGE LOCAL (uniquement sur ce téléphone) ----------
+  const K = { pers:"reg.personnes", pass:"reg.passages", backup:"reg.lastBackup", pin:"reg.pin" };
+  function load(k, def){ try{ const v=localStorage.getItem(k); return v ? JSON.parse(v) : def; }catch(e){ return def; } }
+  function save(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); return true; }catch(e){ toast("Mémoire du téléphone pleine : fais une sauvegarde puis efface d'anciens passages."); return false; } }
+  let persons = load(K.pers, {});    // cle -> {plaque,nom,prenom,societe,cree}
+  let passages = load(K.pass, []);   // [{id,cle,plaque,nom,prenom,societe,arrivee,depart,jour}]
+  const savePers = () => save(K.pers, persons);
+  const savePass = () => save(K.pass, passages);
+  if(navigator.storage && navigator.storage.persist){ navigator.storage.persist().catch(()=>{}); }
+
+  // ---------- Horloge ----------
+  function tick(){ const d=new Date(); $("#clock").textContent = d.toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"})+" · "+pad(d.getHours())+":"+pad(d.getMinutes()); }
+  tick(); setInterval(tick, 15000);
+
+  let toastT;
+  function toast(msg){ const el=$("#toast"); el.textContent=msg; el.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>el.hidden=true, 2800); }
+
+  // ---------- Onglets ----------
+  document.querySelectorAll("nav button").forEach(b => b.addEventListener("click", () => showTab(b.dataset.tab)));
+  function showTab(t){
+    document.querySelectorAll("nav button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab===t ? "true":"false"));
+    ["filtrage","historique","personnes","reglages"].forEach(n => $("#p-"+n).hidden = n!==t);
+    if(t==="historique") renderHistory();
+    if(t==="personnes") renderPersons();
+    if(t==="reglages") renderSettings();
+    window.scrollTo(0,0);
+  }
+
+  // ---------- Bandeaux ----------
+  const standalone = window.navigator.standalone === true || matchMedia("(display-mode: standalone)").matches;
+  $("#installHint").hidden = standalone;
+  function renderBackupHint(){
+    const last = load(K.backup, null);
+    const days = last ? Math.floor((Date.now()-new Date(last))/86400000) : null;
+    const oldest = passages.length ? Math.floor((Date.now()-new Date(passages[0].arrivee))/86400000) : 0;
+    const show = passages.length > 0 && (days === null ? oldest >= 3 : days >= 7);
+    $("#backupHint").hidden = !show;
+    if(show) $("#backupHintText").textContent = days===null ? "Tu n'as encore jamais sauvegardé ton registre." : `Dernière sauvegarde il y a ${days} jours.`;
+  }
+  $("#backupHintBtn").addEventListener("click", doBackup);
+
+  // ---------- FILTRAGE ----------
+  const plateInput = $("#plateInput");
+  plateInput.addEventListener("input", () => {
+    const k = key(plateInput.value);
+    if(isSIV(k) && plateInput.value !== fmtPlate(k)) plateInput.value = fmtPlate(k);
+    renderResult();
+  });
+  plateInput.addEventListener("keydown", e => { if(e.key==="Enter"){ const b=$("#result .big"); if(b) b.click(); } });
+
+  function onsiteMap(){
+    const m = new Map();
+    for(let i=passages.length-1;i>=0;i--){ const p=passages[i]; if(!p.depart && !m.has(p.cle)) m.set(p.cle,p); }
+    return m;
+  }
+
+  function renderResult(){
+    const k = key(plateInput.value);
+    const box = $("#result");
+    if(!k){ box.innerHTML = '<p class="hint">Tape la plaque. Si la personne est déjà connue, sa fiche s\'affiche et il ne reste qu\'à appuyer sur Arrivée.</p>'; return; }
+    const p = persons[k];
+    if(p){
+      const on = onsiteMap().get(k);
+      box.innerHTML = `<div class="card">
+        <div class="who"><span class="pl">${esc(fmtPlate(k))}</span><span class="name">${esc(fullName(p))}</span><span class="co">${esc(p.societe||"Société non renseignée")}</span></div>
+        ${on ? `<span class="pill in">Sur site depuis ${hm(on.arrivee)}</span>` : `<span class="pill off">Pas sur site</span>`}
+        <button class="big ${on?"dep":"arr"}" id="actBtn">${on?"Départ":"Arrivée"}</button>
+      </div>`;
+      $("#actBtn").addEventListener("click", () => on ? markDeparture(on.id) : markArrival(k));
+      return;
+    }
+    const sugg = Object.keys(persons).filter(pk => pk.includes(k)).slice(0,5);
+    const suggHtml = sugg.length ? `<div class="sugg"><span class="label">Plaques proches</span>${sugg.map(pk =>
+      `<button data-k="${esc(pk)}"><span class="pl">${esc(fmtPlate(pk))}</span><span>${esc(fullName(persons[pk]))}</span></button>`).join("")}</div>` : "";
+    const socs = [...new Set(Object.values(persons).map(x=>x.societe).filter(Boolean))].sort();
+    const form = k.length >= 4 ? `<div class="card">
+        <div class="who"><span class="label">Nouvelle personne</span><span class="pl">${esc(fmtPlate(k))}</span></div>
+        <div class="row">
+          <div class="field"><label class="label" for="nNom">Nom</label><input id="nNom" autocomplete="off" autocorrect="off" autocapitalize="characters"></div>
+          <div class="field"><label class="label" for="nPrenom">Prénom</label><input id="nPrenom" autocomplete="off" autocorrect="off" autocapitalize="words"></div>
+        </div>
+        <div class="field"><label class="label" for="nSoc">Société</label><input id="nSoc" autocomplete="off" autocorrect="off" list="socList"></div>
+        <datalist id="socList">${socs.map(s=>`<option value="${esc(s)}">`).join("")}</datalist>
+        <button class="big arr" id="newBtn">Enregistrer et Arrivée</button>
+      </div>` : "";
+    box.innerHTML = suggHtml + form;
+    box.querySelectorAll(".sugg button").forEach(b => b.addEventListener("click", () => { plateInput.value = fmtPlate(b.dataset.k); renderResult(); }));
+    const nb = $("#newBtn");
+    if(nb) nb.addEventListener("click", () => {
+      const nom = $("#nNom").value.trim(), prenom = $("#nPrenom").value.trim(), societe = $("#nSoc").value.trim();
+      if(!nom){ toast("Indique au moins le nom."); $("#nNom").focus(); return; }
+      persons[k] = { plaque: fmtPlate(k), nom: nom.toUpperCase(), prenom, societe, cree: new Date().toISOString() };
+      if(!savePers()) return;
+      markArrival(k);
+    });
+  }
+
+  function markArrival(k){
+    const p = persons[k], now = new Date();
+    passages.push({ id:uid(), cle:k, plaque:fmtPlate(k), nom:p.nom||"", prenom:p.prenom||"", societe:p.societe||"", arrivee:now.toISOString(), depart:null, jour:dayOf(now) });
+    if(!savePass()){ passages.pop(); return; }
+    toast(`Arrivée ${hm(now.toISOString())} · ${fullName(p)}`);
+    plateInput.value=""; renderAll(); plateInput.focus();
+  }
+  function markDeparture(id){
+    const p = passages.find(x=>x.id===id); if(!p) return;
+    p.depart = new Date().toISOString();
+    if(!savePass()){ p.depart=null; return; }
+    toast(`Départ ${hm(p.depart)} · ${fullName(p)}`);
+    if(key(plateInput.value)===p.cle) plateInput.value="";
+    renderAll();
+  }
+
+  function renderOnsite(){
+    const arr = [...onsiteMap().values()].sort((a,b)=> a.arrivee < b.arrivee ? 1 : -1);
+    $("#onsiteCount").textContent = arr.length;
+    const el = $("#onsiteList");
+    if(!arr.length){ el.innerHTML = `<div class="empty">Personne sur site. Les arrivées apparaissent ici avec un bouton Départ.</div>`; return; }
+    el.innerHTML = arr.map(p => `<div class="item">
+      <span class="t">${hm(p.arrivee)}</span>
+      <div class="m"><div><b>${esc(fullName(p))}</b></div><div class="sub">${esc(p.plaque)} · ${esc(p.societe||"—")}</div></div>
+      <button class="btn small" data-id="${esc(p.id)}">Départ</button></div>`).join("");
+    el.querySelectorAll("button[data-id]").forEach(b => b.addEventListener("click", () => markDeparture(b.dataset.id)));
+  }
+
+  // ---------- HISTORIQUE ----------
+  const histDate = $("#histDate");
+  histDate.value = dayOf(new Date());
+  histDate.addEventListener("change", renderHistory);
+  $("#histSearch").addEventListener("input", renderHistory);
+  function shiftDay(n){ const d = new Date(histDate.value+"T12:00:00"); d.setDate(d.getDate()+n); histDate.value = dayOf(d); renderHistory(); }
+  $("#dayPrev").addEventListener("click", () => shiftDay(-1));
+  $("#dayNext").addEventListener("click", () => shiftDay(1));
+
+  function dayRows(){ return passages.filter(r => r.jour === histDate.value); }
+  function filteredHist(){
+    const q = $("#histSearch").value.trim().toLowerCase(), qk = key(q);
+    return dayRows().filter(r => !q || [r.nom,r.prenom,r.societe].join(" ").toLowerCase().includes(q) || (qk && r.cle.includes(qk)))
+      .sort((a,b)=> a.arrivee < b.arrivee ? -1 : 1);
+  }
+  function renderHistory(){
+    const all = dayRows(), rows = filteredHist();
+    const present = all.filter(r=>!r.depart).length;
+    $("#histStats").innerHTML = `<span><b>${all.length}</b> passage${all.length>1?"s":""}</span><span><b>${new Set(all.map(r=>r.societe).filter(Boolean)).size}</b> société(s)</span><span><b>${present}</b> encore sur site</span>`;
+    $("#exportBtn").disabled = !rows.length;
+    const el = $("#histList");
+    if(!rows.length){ el.innerHTML = `<div class="empty">${all.length ? "Aucun résultat pour ce filtre." : "Aucun passage enregistré ce jour-là."}</div>`; return; }
+    el.innerHTML = rows.map(r => `<div class="hrow">
+      <div class="times"><span class="a">${hm(r.arrivee)}</span><span class="d">${r.depart ? hm(r.depart) : "—"}</span></div>
+      <div class="m"><b>${esc(fullName(r))}</b><span class="sub">${esc(r.societe||"—")} · <span class="pl" style="font-size:.95rem">${esc(r.plaque)}</span></span>
+      <span class="sub">${r.depart ? "Durée " + dur(r.arrivee,r.depart) : '<span class="pill in" style="font-size:.75rem">sur site</span>'}</span></div></div>`).join("");
+  }
+
+  async function shareFile(filename, text, type){
+    const blob = new Blob([text], {type});
+    const file = new File([blob], filename, {type});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      try{ await navigator.share({files:[file], title: filename}); return true; }
+      catch(e){ if(e && e.name==="AbortError") return false; }
+    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 5000);
+    return true;
+  }
+  $("#exportBtn").addEventListener("click", () => {
+    const q = v => '"'+String(v??"").replace(/"/g,'""')+'"';
+    const lines = [["Date","Arrivée","Départ","Plaque","Nom","Prénom","Société"].join(";")]
+      .concat(filteredHist().map(r => [histDate.value, hm(r.arrivee), hm(r.depart), r.plaque, r.nom, r.prenom, r.societe].map(q).join(";")));
+    shareFile(`filtrage-${histDate.value}.csv`, "﻿"+lines.join("\r\n"), "text/csv");
+  });
+
+  // ---------- PERSONNES ----------
+  let pendingDelete = null;
+  $("#persSearch").addEventListener("input", renderPersons);
+  function renderPersons(){
+    const q = $("#persSearch").value.trim().toLowerCase(), qk = key(q);
+    const all = Object.entries(persons).sort((a,b)=> (a[1].nom||"").localeCompare(b[1].nom||""));
+    $("#persCount").textContent = all.length + " enregistrée" + (all.length>1?"s":"");
+    const list = all.filter(([k,p]) => !q || [p.nom,p.prenom,p.societe].join(" ").toLowerCase().includes(q) || (qk && k.includes(qk)));
+    const el = $("#persList");
+    if(!all.length){ el.innerHTML = `<div class="empty">Aucune personne enregistrée. Importe ta liste ci-dessus, ou tape une nouvelle plaque dans Filtrage.</div>`; return; }
+    if(!list.length){ el.innerHTML = `<div class="empty">Aucun résultat.</div>`; return; }
+    el.innerHTML = list.map(([k,p]) => `<div class="item">
+      <span class="pl">${esc(fmtPlate(k))}</span>
+      <div class="m"><div><b>${esc(fullName(p))}</b></div><div class="sub">${esc(p.societe||"—")}</div></div>
+      ${pendingDelete===k ? `<span class="confirm"><button class="btn small danger" data-del="${esc(k)}">Supprimer</button><button class="btn small" data-cancel="1">Annuler</button></span>`
+        : `<button class="btn small" data-ask="${esc(k)}">Retirer</button>`}</div>`).join("");
+    el.querySelectorAll("[data-ask]").forEach(b => b.addEventListener("click", () => { pendingDelete=b.dataset.ask; renderPersons(); }));
+    el.querySelectorAll("[data-cancel]").forEach(b => b.addEventListener("click", () => { pendingDelete=null; renderPersons(); }));
+    el.querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", () => {
+      delete persons[b.dataset.del]; savePers(); pendingDelete=null; toast("Personne retirée. Son historique est conservé."); renderAll();
+    }));
+  }
+  $("#importBtn").addEventListener("click", () => {
+    const lines = $("#importText").value.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+    let ok=0, bad=0;
+    for(const l of lines){
+      const parts = l.split(/[;\t,]/).map(s=>s.trim());
+      const k = key(parts[0]);
+      if(!k || k.length<4 || !parts[1] || /^plaque$/i.test(parts[0])){ bad++; continue; }
+      persons[k] = { plaque:fmtPlate(k), nom:parts[1].toUpperCase(), prenom:parts[2]||"", societe:parts[3]||"", cree:new Date().toISOString() };
+      ok++;
+    }
+    if(ok && savePers()){ $("#importText").value=""; }
+    toast(`${ok} personne(s) importée(s)` + (bad? ` · ${bad} ligne(s) ignorée(s)` : ""));
+    renderAll();
+  });
+
+  // ---------- RÉGLAGES ----------
+  function renderSettings(){
+    $("#stPers").textContent = Object.keys(persons).length;
+    $("#stPass").textContent = passages.length;
+    const last = load(K.backup, null);
+    $("#stBackup").textContent = last ? new Date(last).toLocaleDateString("fr-FR",{day:"numeric",month:"short",year:"numeric"}) : "jamais";
+    $("#pinState").textContent = load(K.pin, null) ? "Un code est demandé à l'ouverture de l'appli." : "Aucun code. Tu peux en ajouter un en plus du verrouillage de ton iPhone.";
+  }
+  async function doBackup(){
+    const data = JSON.stringify({ app:"registre-filtrage", version:1, date:new Date().toISOString(), personnes:persons, passages }, null, 1);
+    const ok = await shareFile(`registre-sauvegarde-${dayOf(new Date())}.json`, data, "application/json");
+    if(ok){ save(K.backup, new Date().toISOString()); renderBackupHint(); renderSettings(); }
+  }
+  $("#backupBtn").addEventListener("click", doBackup);
+  $("#restoreBtn").addEventListener("click", () => $("#restoreFile").click());
+  let restoreData = null;
+  $("#restoreFile").addEventListener("change", async e => {
+    const f = e.target.files[0]; e.target.value=""; if(!f) return;
+    try{
+      const d = JSON.parse(await f.text());
+      if(d.app!=="registre-filtrage" || typeof d.personnes!=="object" || !Array.isArray(d.passages)) throw 0;
+      restoreData = d;
+      $("#restoreConfirm").innerHTML = `<div class="notice"><span>Ce fichier contient <b>${Object.keys(d.personnes).length}</b> personnes et <b>${d.passages.length}</b> passages (sauvegarde du ${new Date(d.date).toLocaleDateString("fr-FR")}). Il remplacera tout ce qui est actuellement dans l'appli.</span>
+        <div class="confirm"><button class="btn primary small" id="restoreGo">Remplacer</button><button class="btn small" id="restoreNo">Annuler</button></div></div>`;
+      $("#restoreGo").addEventListener("click", () => {
+        persons = restoreData.personnes; passages = restoreData.passages;
+        savePers(); savePass(); restoreData=null; $("#restoreConfirm").innerHTML=""; toast("Sauvegarde restaurée."); renderAll(); renderSettings();
+      });
+      $("#restoreNo").addEventListener("click", () => { restoreData=null; $("#restoreConfirm").innerHTML=""; });
+    }catch(err){ toast("Ce fichier n'est pas une sauvegarde du registre."); }
+  });
+
+  async function hash(s){ const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("registre:"+s)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join(""); }
+  $("#pinSet").addEventListener("click", async () => {
+    const v = $("#pinNew").value.trim();
+    if(!/^\d{4,8}$/.test(v)){ toast("Le code doit faire 4 à 8 chiffres."); return; }
+    save(K.pin, await hash(v)); $("#pinNew").value=""; toast("Code enregistré."); renderSettings();
+  });
+  $("#pinOff").addEventListener("click", () => { try{ localStorage.removeItem(K.pin); }catch(e){} toast("Code retiré."); renderSettings(); });
+
+  $("#wipeAsk").addEventListener("click", () => {
+    $("#wipeZone").innerHTML = `<div class="confirm"><span>Vraiment tout effacer ?</span><button class="btn small danger" id="wipeGo">Oui, tout effacer</button><button class="btn small" id="wipeNo">Annuler</button></div>`;
+    $("#wipeGo").addEventListener("click", () => { persons={}; passages=[]; savePers(); savePass(); try{ localStorage.removeItem(K.backup); }catch(e){} resetWipe(); toast("Registre effacé."); renderAll(); renderSettings(); });
+    $("#wipeNo").addEventListener("click", resetWipe);
+  });
+  function resetWipe(){ $("#wipeZone").innerHTML = `<button class="btn danger" id="wipeAsk2">Tout effacer</button>`; $("#wipeAsk2").addEventListener("click", () => $("#wipeAsk").click()); }
+
+  // ---------- Verrouillage ----------
+  let hiddenAt = 0;
+  function lockIfNeeded(){ if(load(K.pin, null)){ $("#lock").hidden=false; $("#pinErr").textContent=""; $("#pinIn").value=""; setTimeout(()=>$("#pinIn").focus(),50); } }
+  async function tryUnlock(){
+    if(await hash($("#pinIn").value.trim()) === load(K.pin, null)){ $("#lock").hidden=true; }
+    else { $("#pinErr").textContent="Code incorrect."; $("#pinIn").value=""; }
+  }
+  $("#pinBtn").addEventListener("click", tryUnlock);
+  $("#pinIn").addEventListener("keydown", e => { if(e.key==="Enter") tryUnlock(); });
+  document.addEventListener("visibilitychange", () => {
+    if(document.hidden) hiddenAt = Date.now();
+    else if(hiddenAt && Date.now()-hiddenAt > 3*60000) lockIfNeeded();
+  });
+
+  function renderAll(){ renderResult(); renderOnsite(); renderBackupHint(); if(!$("#p-historique").hidden) renderHistory(); if(!$("#p-personnes").hidden) renderPersons(); }
+  renderAll();
+  lockIfNeeded();
+
+  if("serviceWorker" in navigator){ navigator.serviceWorker.register("sw.js").catch(()=>{}); }
+})();
+</script>
+</body>
+</html>
