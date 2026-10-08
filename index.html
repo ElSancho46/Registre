@@ -105,6 +105,24 @@ details summary{cursor:pointer;font-weight:600}
 .lock .err{color:#ffb4a8;min-height:1.4em;margin:0}
 .kv{display:flex;justify-content:space-between;gap:12px;font-size:.95rem}
 .kv b{font-variant-numeric:tabular-nums}
+.chks{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.chk{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:11px 12px;border-top:1px solid var(--line);cursor:pointer;background:var(--surface)}
+.chk:first-child{border-top:0}
+.chk input{width:24px;height:24px;accent-color:var(--eu);margin:0}
+.dep .chk input{accent-color:var(--out)}
+.chk .m{min-width:0;display:flex;flex-direction:column}
+.chk .m b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.x{border:0;background:transparent;color:var(--muted);font-size:1.5rem;line-height:1;padding:2px 8px;cursor:pointer}
+.addp{display:flex;flex-direction:column;gap:10px;border:1px dashed var(--line);border-radius:10px;padding:12px}
+.card.dep{border-color:var(--out)}
+.grp{border-top:1px solid var(--line)}
+.grp:first-child{border-top:0}
+.gh{display:flex;align-items:center;gap:10px;padding:10px 14px 4px}
+.gh .t{font:700 1.15rem var(--f-display);color:var(--in);font-variant-numeric:tabular-nums}
+.gh .btn{margin-left:auto}
+.gp{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:6px 14px 10px 14px}
+.gp .m{min-width:0;display:flex;flex-direction:column}
+.pl.swap{color:var(--out)}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -175,7 +193,7 @@ details summary{cursor:pointer;font-weight:600}
     </div>
     <details class="card">
       <summary>Importer ma liste existante</summary>
-      <p class="hint">Colle une ligne par personne, dans cet ordre : <b>Plaque ; Nom ; Prénom ; Société</b>. Les séparateurs « ; », « , » ou tabulation fonctionnent. Une plaque déjà connue est mise à jour.</p>
+      <p class="hint">Colle une ligne par personne, dans cet ordre : <b>Plaque ; Nom ; Prénom ; Société</b>. Les séparateurs « ; », « , » ou tabulation fonctionnent. Plusieurs lignes avec la même plaque = plusieurs personnes dans ce véhicule. Une même personne peut avoir plusieurs plaques.</p>
       <div class="field"><textarea id="importText" rows="6" placeholder="AB-123-CD;MARTIN;Paul;Eiffage&#10;GH-456-JK;DURAND;Sophie;Veolia"></textarea></div>
       <button class="btn primary" id="importBtn" style="align-self:flex-start">Importer</button>
     </details>
@@ -188,6 +206,7 @@ details summary{cursor:pointer;font-weight:600}
       <h2>Mes données</h2>
       <p class="hint">Tout est enregistré uniquement dans ce téléphone. Rien n'est envoyé sur internet.</p>
       <div class="kv"><span>Personnes connues</span><b id="stPers">0</b></div>
+      <div class="kv"><span>Véhicules connus</span><b id="stVeh">0</b></div>
       <div class="kv"><span>Passages enregistrés</span><b id="stPass">0</b></div>
       <div class="kv"><span>Dernière sauvegarde</span><b id="stBackup">jamais</b></div>
     </div>
@@ -215,7 +234,7 @@ details summary{cursor:pointer;font-weight:600}
     <div class="card">
       <h2>Tout effacer</h2>
       <p class="hint">Supprime toutes les personnes et tout l'historique de ce téléphone. Impossible à annuler.</p>
-      <div id="wipeZone"><button class="btn danger" id="wipeAsk">Tout effacer</button></div>
+      <div id="wipeZone"></div>
     </div>
   </section>
 </div>
@@ -240,18 +259,41 @@ details summary{cursor:pointer;font-weight:600}
   const dayOf = d => d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
   const hm = iso => { if(!iso) return ""; const d=new Date(iso); return pad(d.getHours())+":"+pad(d.getMinutes()); };
   const dur = (a,b) => { const m=Math.max(0,Math.round((new Date(b)-new Date(a))/60000)); return m<60? m+" min" : Math.floor(m/60)+" h "+pad(m%60); };
-  const fullName = p => [String(p.nom||"").toUpperCase(), p.prenom||""].filter(Boolean).join(" ");
-  const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+  const fullName = p => p ? [String(p.nom||"").toUpperCase(), p.prenom||""].filter(Boolean).join(" ") : "";
+  const norm = s => String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").trim();
+  const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,9);
 
   // ---------- STOCKAGE LOCAL (uniquement sur ce téléphone) ----------
-  const K = { pers:"reg.personnes", pass:"reg.passages", backup:"reg.lastBackup", pin:"reg.pin" };
+  // P : personnes {id:{id,nom,prenom,societe}}   V : véhicules {plaque:[ids]}
+  // passages : [{id,grp,pid,cle,plaque,nom,prenom,societe,arrivee,depart,plaqueDepart,jour}]
+  const K = { p:"reg.p2", v:"reg.v2", pass:"reg.passages", old:"reg.personnes", backup:"reg.lastBackup", pin:"reg.pin" };
   function load(k, def){ try{ const v=localStorage.getItem(k); return v ? JSON.parse(v) : def; }catch(e){ return def; } }
   function save(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); return true; }catch(e){ toast("Mémoire du téléphone pleine : fais une sauvegarde puis efface d'anciens passages."); return false; } }
-  let persons = load(K.pers, {});    // cle -> {plaque,nom,prenom,societe,cree}
-  let passages = load(K.pass, []);   // [{id,cle,plaque,nom,prenom,societe,arrivee,depart,jour}]
-  const savePers = () => save(K.pers, persons);
-  const savePass = () => save(K.pass, passages);
+  function migrateV1(oldPers, pass){
+    const P={}, V={};
+    for(const [k,p] of Object.entries(oldPers||{})){ const id=uid(); P[id]={id, nom:p.nom||"", prenom:p.prenom||"", societe:p.societe||"", cree:p.cree||new Date().toISOString()}; V[k]=[id]; }
+    for(const r of pass){ if(!r.pid && V[r.cle]) r.pid=V[r.cle][0]; if(!r.grp) r.grp=r.id; if(r.depart && r.plaqueDepart===undefined) r.plaqueDepart=r.plaque; }
+    return {P,V};
+  }
+  let P = load(K.p, null), V = load(K.v, null), passages = load(K.pass, []);
+  if(!P || !V){
+    const m = migrateV1(load(K.old, {}), passages); P=m.P; V=m.V;
+    save(K.p,P); save(K.v,V); save(K.pass,passages);
+    try{ localStorage.removeItem(K.old); }catch(e){}
+  }
+  const saveP = () => save(K.p, P), saveV = () => save(K.v, V), savePass = () => save(K.pass, passages);
   if(navigator.storage && navigator.storage.persist){ navigator.storage.persist().catch(()=>{}); }
+
+  const platesOf = id => Object.keys(V).filter(k => V[k].includes(id));
+  const openPassages = () => passages.filter(r => !r.depart);
+  function linkPerson(k, id){ V[k] = V[k] || []; if(!V[k].includes(id)) V[k].push(id); saveV(); }
+  function unlinkPerson(k, id){ if(!V[k]) return; V[k] = V[k].filter(x => x!==id); if(!V[k].length) delete V[k]; saveV(); }
+  function findPerson(nom, prenom){ const n=norm(nom), pr=norm(prenom); return Object.values(P).find(p => norm(p.nom)===n && norm(p.prenom)===pr); }
+  function createPerson(nom, prenom, societe){
+    const ex = findPerson(nom, prenom);
+    if(ex){ if(societe && !ex.societe){ ex.societe=societe; saveP(); } return ex.id; }
+    const id = uid(); P[id] = { id, nom: nom.toUpperCase(), prenom, societe, cree: new Date().toISOString() }; saveP(); return id;
+  }
 
   // ---------- Horloge ----------
   function tick(){ const d=new Date(); $("#clock").textContent = d.toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"})+" · "+pad(d.getHours())+":"+pad(d.getMinutes()); }
@@ -286,86 +328,171 @@ details summary{cursor:pointer;font-weight:600}
 
   // ---------- FILTRAGE ----------
   const plateInput = $("#plateInput");
+  let cur = { k:null, selArr:new Set(), selDep:null, others:false, add:false };
   plateInput.addEventListener("input", () => {
     const k = key(plateInput.value);
     if(isSIV(k) && plateInput.value !== fmtPlate(k)) plateInput.value = fmtPlate(k);
     renderResult();
   });
-  plateInput.addEventListener("keydown", e => { if(e.key==="Enter"){ const b=$("#result .big"); if(b) b.click(); } });
 
-  function onsiteMap(){
-    const m = new Map();
-    for(let i=passages.length-1;i>=0;i--){ const p=passages[i]; if(!p.depart && !m.has(p.cle)) m.set(p.cle,p); }
-    return m;
+  function personRow(name, sub, checked, data, extra){
+    return `<label class="chk"><input type="checkbox" ${checked?"checked":""} ${data}><span class="m"><b>${esc(name)}</b><span class="sub">${sub}</span></span>${extra||""}</label>`;
+  }
+
+  function addPanel(mode){
+    return `<div class="addp">
+      <div class="row">
+        <div class="field"><label class="label" for="nNom">Nom</label><input id="nNom" autocomplete="off" autocorrect="off" autocapitalize="characters"></div>
+        <div class="field"><label class="label" for="nPrenom">Prénom</label><input id="nPrenom" autocomplete="off" autocorrect="off" autocapitalize="words"></div>
+      </div>
+      <div id="addSugg" class="sugg"></div>
+      <div class="field"><label class="label" for="nSoc">Société</label><input id="nSoc" autocomplete="off" autocorrect="off" list="socList"></div>
+      <datalist id="socList">${[...new Set(Object.values(P).map(x=>x.societe).filter(Boolean))].sort().map(s=>`<option value="${esc(s)}">`).join("")}</datalist>
+      ${mode==="first"
+        ? `<button class="big arr" id="addArrive">Enregistrer et Arrivée</button><button class="btn" id="addMore">Enregistrer et ajouter un passager</button>`
+        : `<button class="btn primary" id="addOnly">Ajouter dans ce véhicule</button>`}
+    </div>`;
   }
 
   function renderResult(){
     const k = key(plateInput.value);
     const box = $("#result");
-    if(!k){ box.innerHTML = '<p class="hint">Tape la plaque. Si la personne est déjà connue, sa fiche s\'affiche et il ne reste qu\'à appuyer sur Arrivée.</p>'; return; }
-    const p = persons[k];
-    if(p){
-      const on = onsiteMap().get(k);
-      box.innerHTML = `<div class="card">
-        <div class="who"><span class="pl">${esc(fmtPlate(k))}</span><span class="name">${esc(fullName(p))}</span><span class="co">${esc(p.societe||"Société non renseignée")}</span></div>
-        ${on ? `<span class="pill in">Sur site depuis ${hm(on.arrivee)}</span>` : `<span class="pill off">Pas sur site</span>`}
-        <button class="big ${on?"dep":"arr"}" id="actBtn">${on?"Départ":"Arrivée"}</button>
-      </div>`;
-      $("#actBtn").addEventListener("click", () => on ? markDeparture(on.id) : markArrival(k));
-      return;
+    if(k !== cur.k) cur = { k, selArr:new Set(), selDep:null, others:false, add:false };
+    if(!k){ box.innerHTML = '<p class="hint">Tape la plaque. Les personnes habituelles de ce véhicule s\'affichent : coche celles qui sont dans la voiture, puis Arrivée. Au départ, tape la plaque de la voiture qui sort.</p>'; return; }
+
+    const linked = (V[k]||[]).filter(id => P[id]);
+    const open = openPassages();
+    const openPids = new Set(open.map(r => r.pid));
+    const arrCands = linked.filter(id => !openPids.has(id));
+    const depMain = open.filter(r => r.cle===k || linked.includes(r.pid));
+    const depOthers = open.filter(r => !depMain.includes(r));
+    if(cur.selDep === null){
+      cur.selDep = new Set(depMain.map(r => r.id));
+      if(arrCands.length===1 && !depMain.length) cur.selArr.add(arrCands[0]);
+      if(!linked.length && !depMain.length) cur.others = true;
     }
-    const sugg = Object.keys(persons).filter(pk => pk.includes(k)).slice(0,5);
-    const suggHtml = sugg.length ? `<div class="sugg"><span class="label">Plaques proches</span>${sugg.map(pk =>
-      `<button data-k="${esc(pk)}"><span class="pl">${esc(fmtPlate(pk))}</span><span>${esc(fullName(persons[pk]))}</span></button>`).join("")}</div>` : "";
-    const socs = [...new Set(Object.values(persons).map(x=>x.societe).filter(Boolean))].sort();
-    const form = k.length >= 4 ? `<div class="card">
-        <div class="who"><span class="label">Nouvelle personne</span><span class="pl">${esc(fmtPlate(k))}</span></div>
-        <div class="row">
-          <div class="field"><label class="label" for="nNom">Nom</label><input id="nNom" autocomplete="off" autocorrect="off" autocapitalize="characters"></div>
-          <div class="field"><label class="label" for="nPrenom">Prénom</label><input id="nPrenom" autocomplete="off" autocorrect="off" autocapitalize="words"></div>
-        </div>
-        <div class="field"><label class="label" for="nSoc">Société</label><input id="nSoc" autocomplete="off" autocorrect="off" list="socList"></div>
-        <datalist id="socList">${socs.map(s=>`<option value="${esc(s)}">`).join("")}</datalist>
-        <button class="big arr" id="newBtn">Enregistrer et Arrivée</button>
-      </div>` : "";
-    box.innerHTML = suggHtml + form;
-    box.querySelectorAll(".sugg button").forEach(b => b.addEventListener("click", () => { plateInput.value = fmtPlate(b.dataset.k); renderResult(); }));
-    const nb = $("#newBtn");
-    if(nb) nb.addEventListener("click", () => {
-      const nom = $("#nNom").value.trim(), prenom = $("#nPrenom").value.trim(), societe = $("#nSoc").value.trim();
-      if(!nom){ toast("Indique au moins le nom."); $("#nNom").focus(); return; }
-      persons[k] = { plaque: fmtPlate(k), nom: nom.toUpperCase(), prenom, societe, cree: new Date().toISOString() };
-      if(!savePers()) return;
-      markArrival(k);
-    });
+    for(const id of [...cur.selArr]) if(!arrCands.includes(id)) cur.selArr.delete(id);
+
+    let html = `<div class="card"><div class="who"><span class="label">Véhicule</span><span class="name">${esc(fmtPlate(k))}</span>
+      <span class="co">${linked.length ? linked.length+" personne"+(linked.length>1?"s":"")+" habituelle"+(linked.length>1?"s":"") : "Plaque inconnue"}</span></div>`;
+
+    // Arrivée
+    if(!linked.length){
+      const sugg = Object.keys(V).filter(pk => pk!==k && pk.includes(k)).slice(0,4);
+      if(sugg.length) html += `<div class="sugg"><span class="label">Plaques proches</span>${sugg.map(pk =>
+        `<button data-k="${esc(pk)}"><span class="pl">${esc(fmtPlate(pk))}</span><span>${esc(V[pk].map(id=>fullName(P[id])).join(", "))}</span></button>`).join("")}</div>`;
+      if(k.length >= 4) html += `<span class="label">Arrivée · nouvelle personne</span>` + addPanel("first");
+    } else {
+      html += `<span class="label">Arrivée · qui est dans la voiture ?</span>`;
+      html += arrCands.length ? `<div class="chks">${arrCands.map(id => personRow(fullName(P[id]), esc(P[id].societe||"—"), cur.selArr.has(id), `data-arr="${esc(id)}"`,
+        `<button class="x" data-unlink="${esc(id)}" aria-label="Retirer de ce véhicule">×</button>`)).join("")}</div>`
+        : `<p class="hint">Toutes les personnes de ce véhicule sont déjà sur site.</p>`;
+      html += cur.add ? addPanel("add") : `<button class="btn" id="openAdd">+ Ajouter une personne</button>`;
+      if(arrCands.length) html += `<button class="big arr" id="arrBtn" ${cur.selArr.size?"":"disabled"}>Arrivée${cur.selArr.size>1?" ("+cur.selArr.size+")":""}</button>`;
+    }
+    html += `</div>`;
+
+    // Départ
+    if(open.length){
+      const nDep = cur.selDep.size;
+      html += `<div class="card dep"><span class="label">Départ dans ce véhicule</span>`;
+      if(depMain.length) html += `<div class="chks">${depMain.map(r => personRow(fullName(r), `Arrivé ${hm(r.arrivee)} avec ${esc(r.plaque)}`, cur.selDep.has(r.id), `data-dep="${esc(r.id)}"`)).join("")}</div>`;
+      if(depOthers.length){
+        html += cur.others
+          ? `<span class="label">Autres personnes sur site</span><div class="chks">${depOthers.sort((a,b)=>fullName(a).localeCompare(fullName(b))).map(r => personRow(fullName(r), `${esc(r.societe||"—")} · arrivé ${hm(r.arrivee)} avec ${esc(r.plaque)}`, cur.selDep.has(r.id), `data-dep="${esc(r.id)}"`)).join("")}</div>`
+          : `<button class="btn" id="showOthers">+ Quelqu'un d'autre repart dans ce véhicule (${depOthers.length} sur site)</button>`;
+      }
+      html += `<button class="big dep" id="depBtn" ${nDep?"":"disabled"}>Départ${nDep>1?" ("+nDep+")":""}</button></div>`;
+    }
+    box.innerHTML = html;
+    wireResult(k);
   }
 
-  function markArrival(k){
-    const p = persons[k], now = new Date();
-    passages.push({ id:uid(), cle:k, plaque:fmtPlate(k), nom:p.nom||"", prenom:p.prenom||"", societe:p.societe||"", arrivee:now.toISOString(), depart:null, jour:dayOf(now) });
-    if(!savePass()){ passages.pop(); return; }
-    toast(`Arrivée ${hm(now.toISOString())} · ${fullName(p)}`);
+  function wireResult(k){
+    const box = $("#result");
+    box.querySelectorAll(".sugg button[data-k]").forEach(b => b.addEventListener("click", () => { plateInput.value = fmtPlate(b.dataset.k); renderResult(); }));
+    box.querySelectorAll("[data-arr]").forEach(c => c.addEventListener("change", () => { c.checked ? cur.selArr.add(c.dataset.arr) : cur.selArr.delete(c.dataset.arr); renderResult(); }));
+    box.querySelectorAll("[data-dep]").forEach(c => c.addEventListener("change", () => { c.checked ? cur.selDep.add(c.dataset.dep) : cur.selDep.delete(c.dataset.dep); renderResult(); }));
+    box.querySelectorAll("[data-unlink]").forEach(b => b.addEventListener("click", e => {
+      e.preventDefault(); const id=b.dataset.unlink; unlinkPerson(k, id); cur.selArr.delete(id);
+      toast(`${fullName(P[id])} retiré(e) de ce véhicule.`); renderResult();
+    }));
+    const oa = $("#openAdd"); if(oa) oa.addEventListener("click", () => { cur.add = true; renderResult(); $("#nNom").focus(); });
+    const so = $("#showOthers"); if(so) so.addEventListener("click", () => { cur.others = true; renderResult(); });
+    const ab = $("#arrBtn"); if(ab) ab.addEventListener("click", () => doArrival(k));
+    const db = $("#depBtn"); if(db) db.addEventListener("click", () => doDeparture(k));
+
+    // panneau d'ajout de personne
+    const nNom = $("#nNom");
+    if(nNom){
+      const linked = V[k]||[];
+      const updSugg = () => {
+        const q = norm(nNom.value + " " + $("#nPrenom").value);
+        const el = $("#addSugg");
+        if(norm(nNom.value).length < 2){ el.innerHTML=""; return; }
+        const terms = q.split(/\s+/).filter(Boolean);
+        const hits = Object.values(P).filter(p => !linked.includes(p.id) && terms.every(t => norm(p.nom+" "+p.prenom).includes(t))).slice(0,4);
+        el.innerHTML = hits.length ? `<span class="label">Déjà connu ?</span>` + hits.map(p =>
+          `<button data-pick="${esc(p.id)}"><span><b>${esc(fullName(p))}</b></span><span class="sub">${esc(p.societe||"—")}</span></button>`).join("") : "";
+        el.querySelectorAll("[data-pick]").forEach(b => b.addEventListener("click", () => {
+          linkPerson(k, b.dataset.pick); cur.selArr.add(b.dataset.pick); cur.add=false; renderResult();
+        }));
+      };
+      nNom.addEventListener("input", updSugg); $("#nPrenom").addEventListener("input", updSugg);
+      const readNew = () => {
+        const nom = nNom.value.trim(), prenom = $("#nPrenom").value.trim(), societe = $("#nSoc").value.trim();
+        if(!nom){ toast("Indique au moins le nom."); nNom.focus(); return null; }
+        const id = createPerson(nom, prenom, societe); linkPerson(k, id); return id;
+      };
+      const aa = $("#addArrive"); if(aa) aa.addEventListener("click", () => { const id=readNew(); if(!id) return; cur.selArr=new Set([id]); doArrival(k); });
+      const am = $("#addMore"); if(am) am.addEventListener("click", () => { const id=readNew(); if(!id) return; cur.selArr.add(id); cur.add=true; renderResult(); $("#nNom").focus(); toast("Enregistré. Ajoute le passager suivant."); });
+      const ao = $("#addOnly"); if(ao) ao.addEventListener("click", () => { const id=readNew(); if(!id) return; cur.selArr.add(id); cur.add=false; renderResult(); });
+    }
+  }
+
+  function doArrival(k){
+    const openPids = new Set(openPassages().map(r=>r.pid));
+    const ids = [...cur.selArr].filter(id => P[id] && !openPids.has(id));
+    if(!ids.length) return;
+    const now = new Date(), grp = uid();
+    for(const id of ids){ const p=P[id]; passages.push({ id:uid(), grp, pid:id, cle:k, plaque:fmtPlate(k), nom:p.nom||"", prenom:p.prenom||"", societe:p.societe||"", arrivee:now.toISOString(), depart:null, plaqueDepart:null, jour:dayOf(now) }); }
+    if(!savePass()){ passages.splice(-ids.length); return; }
+    toast(ids.length===1 ? `Arrivée ${hm(now.toISOString())} · ${fullName(P[ids[0]])}` : `Arrivée ${hm(now.toISOString())} · ${ids.length} personnes`);
     plateInput.value=""; renderAll(); plateInput.focus();
   }
-  function markDeparture(id){
-    const p = passages.find(x=>x.id===id); if(!p) return;
-    p.depart = new Date().toISOString();
-    if(!savePass()){ p.depart=null; return; }
-    toast(`Départ ${hm(p.depart)} · ${fullName(p)}`);
-    if(key(plateInput.value)===p.cle) plateInput.value="";
-    renderAll();
+  function depart(rows, plate){
+    const now = new Date().toISOString();
+    for(const r of rows){ r.depart = now; r.plaqueDepart = plate; }
+    if(!savePass()){ for(const r of rows){ r.depart=null; r.plaqueDepart=null; } return false; }
+    toast(rows.length===1 ? `Départ ${hm(now)} · ${fullName(rows[0])}` : `Départ ${hm(now)} · ${rows.length} personnes`);
+    return true;
+  }
+  function doDeparture(k){
+    const rows = passages.filter(r => !r.depart && cur.selDep.has(r.id));
+    if(!rows.length) return;
+    if(depart(rows, fmtPlate(k))){ plateInput.value=""; renderAll(); }
   }
 
   function renderOnsite(){
-    const arr = [...onsiteMap().values()].sort((a,b)=> a.arrivee < b.arrivee ? 1 : -1);
-    $("#onsiteCount").textContent = arr.length;
+    const open = openPassages();
+    $("#onsiteCount").textContent = open.length;
     const el = $("#onsiteList");
-    if(!arr.length){ el.innerHTML = `<div class="empty">Personne sur site. Les arrivées apparaissent ici avec un bouton Départ.</div>`; return; }
-    el.innerHTML = arr.map(p => `<div class="item">
-      <span class="t">${hm(p.arrivee)}</span>
-      <div class="m"><div><b>${esc(fullName(p))}</b></div><div class="sub">${esc(p.plaque)} · ${esc(p.societe||"—")}</div></div>
-      <button class="btn small" data-id="${esc(p.id)}">Départ</button></div>`).join("");
-    el.querySelectorAll("button[data-id]").forEach(b => b.addEventListener("click", () => markDeparture(b.dataset.id)));
+    if(!open.length){ el.innerHTML = `<div class="empty">Personne sur site.</div>`; return; }
+    const groups = new Map();
+    for(const r of open){ const g = r.grp||r.id; if(!groups.has(g)) groups.set(g, []); groups.get(g).push(r); }
+    const list = [...groups.values()].sort((a,b)=> a[0].arrivee < b[0].arrivee ? 1 : -1);
+    el.innerHTML = list.map(g => `<div class="grp">
+      <div class="gh"><span class="t">${hm(g[0].arrivee)}</span><span class="pl">${esc(g[0].plaque)}</span>
+        ${g.length>1 ? `<button class="btn small" data-gdep="${esc(g[0].grp||g[0].id)}">Tous partent</button>` : ""}</div>
+      ${g.map(r => `<div class="gp"><div class="m"><b>${esc(fullName(r))}</b><span class="sub">${esc(r.societe||"—")}</span></div>
+        <button class="btn small" data-pdep="${esc(r.id)}">Départ</button></div>`).join("")}
+    </div>`).join("") + `<p class="hint" style="padding:10px 14px">Ici, le départ se fait avec le même véhicule qu'à l'arrivée. Si quelqu'un repart dans une autre voiture, tape la plaque de cette voiture en haut.</p>`;
+    el.querySelectorAll("[data-gdep]").forEach(b => b.addEventListener("click", () => {
+      const g = groups.get(b.dataset.gdep); if(depart(g, g[0].plaque)) renderAll();
+    }));
+    el.querySelectorAll("[data-pdep]").forEach(b => b.addEventListener("click", () => {
+      const r = open.find(x=>x.id===b.dataset.pdep); if(r && depart([r], r.plaque)) renderAll();
+    }));
   }
 
   // ---------- HISTORIQUE ----------
@@ -379,21 +506,25 @@ details summary{cursor:pointer;font-weight:600}
 
   function dayRows(){ return passages.filter(r => r.jour === histDate.value); }
   function filteredHist(){
-    const q = $("#histSearch").value.trim().toLowerCase(), qk = key(q);
-    return dayRows().filter(r => !q || [r.nom,r.prenom,r.societe].join(" ").toLowerCase().includes(q) || (qk && r.cle.includes(qk)))
+    const q = norm($("#histSearch").value), qk = key(q);
+    return dayRows().filter(r => !q || norm([r.nom,r.prenom,r.societe].join(" ")).includes(q) || (qk && (r.cle.includes(qk) || key(r.plaqueDepart).includes(qk))))
       .sort((a,b)=> a.arrivee < b.arrivee ? -1 : 1);
   }
   function renderHistory(){
     const all = dayRows(), rows = filteredHist();
     const present = all.filter(r=>!r.depart).length;
-    $("#histStats").innerHTML = `<span><b>${all.length}</b> passage${all.length>1?"s":""}</span><span><b>${new Set(all.map(r=>r.societe).filter(Boolean)).size}</b> société(s)</span><span><b>${present}</b> encore sur site</span>`;
+    const vehicles = new Set(all.map(r=>r.grp||r.id)).size;
+    $("#histStats").innerHTML = `<span><b>${all.length}</b> personne${all.length>1?"s":""}</span><span><b>${vehicles}</b> véhicule${vehicles>1?"s":""}</span><span><b>${present}</b> encore sur site</span>`;
     $("#exportBtn").disabled = !rows.length;
     const el = $("#histList");
     if(!rows.length){ el.innerHTML = `<div class="empty">${all.length ? "Aucun résultat pour ce filtre." : "Aucun passage enregistré ce jour-là."}</div>`; return; }
-    el.innerHTML = rows.map(r => `<div class="hrow">
+    el.innerHTML = rows.map(r => {
+      const other = r.depart && r.plaqueDepart && r.plaqueDepart !== r.plaque;
+      return `<div class="hrow">
       <div class="times"><span class="a">${hm(r.arrivee)}</span><span class="d">${r.depart ? hm(r.depart) : "—"}</span></div>
-      <div class="m"><b>${esc(fullName(r))}</b><span class="sub">${esc(r.societe||"—")} · <span class="pl" style="font-size:.95rem">${esc(r.plaque)}</span></span>
-      <span class="sub">${r.depart ? "Durée " + dur(r.arrivee,r.depart) : '<span class="pill in" style="font-size:.75rem">sur site</span>'}</span></div></div>`).join("");
+      <div class="m"><b>${esc(fullName(r))}</b><span class="sub">${esc(r.societe||"—")}</span>
+      <span class="sub">Arrivé avec <span class="pl">${esc(r.plaque)}</span>${other ? ` · reparti avec <span class="pl swap">${esc(r.plaqueDepart)}</span>` : ""}</span>
+      <span class="sub">${r.depart ? "Durée " + dur(r.arrivee,r.depart) : '<span class="pill in" style="font-size:.75rem">sur site</span>'}</span></div></div>`; }).join("");
   }
 
   async function shareFile(filename, text, type){
@@ -410,8 +541,8 @@ details summary{cursor:pointer;font-weight:600}
   }
   $("#exportBtn").addEventListener("click", () => {
     const q = v => '"'+String(v??"").replace(/"/g,'""')+'"';
-    const lines = [["Date","Arrivée","Départ","Plaque","Nom","Prénom","Société"].join(";")]
-      .concat(filteredHist().map(r => [histDate.value, hm(r.arrivee), hm(r.depart), r.plaque, r.nom, r.prenom, r.societe].map(q).join(";")));
+    const lines = [["Date","Arrivée","Véhicule arrivée","Départ","Véhicule départ","Nom","Prénom","Société"].join(";")]
+      .concat(filteredHist().map(r => [histDate.value, hm(r.arrivee), r.plaque, hm(r.depart), r.plaqueDepart||"", r.nom, r.prenom, r.societe].map(q).join(";")));
     shareFile(`filtrage-${histDate.value}.csv`, "﻿"+lines.join("\r\n"), "text/csv");
   });
 
@@ -419,22 +550,22 @@ details summary{cursor:pointer;font-weight:600}
   let pendingDelete = null;
   $("#persSearch").addEventListener("input", renderPersons);
   function renderPersons(){
-    const q = $("#persSearch").value.trim().toLowerCase(), qk = key(q);
-    const all = Object.entries(persons).sort((a,b)=> (a[1].nom||"").localeCompare(b[1].nom||""));
+    const q = norm($("#persSearch").value), qk = key(q);
+    const all = Object.values(P).sort((a,b)=> fullName(a).localeCompare(fullName(b)));
     $("#persCount").textContent = all.length + " enregistrée" + (all.length>1?"s":"");
-    const list = all.filter(([k,p]) => !q || [p.nom,p.prenom,p.societe].join(" ").toLowerCase().includes(q) || (qk && k.includes(qk)));
+    const list = all.filter(p => !q || norm([p.nom,p.prenom,p.societe].join(" ")).includes(q) || (qk && platesOf(p.id).some(k=>k.includes(qk))));
     const el = $("#persList");
     if(!all.length){ el.innerHTML = `<div class="empty">Aucune personne enregistrée. Importe ta liste ci-dessus, ou tape une nouvelle plaque dans Filtrage.</div>`; return; }
     if(!list.length){ el.innerHTML = `<div class="empty">Aucun résultat.</div>`; return; }
-    el.innerHTML = list.map(([k,p]) => `<div class="item">
-      <span class="pl">${esc(fmtPlate(k))}</span>
-      <div class="m"><div><b>${esc(fullName(p))}</b></div><div class="sub">${esc(p.societe||"—")}</div></div>
-      ${pendingDelete===k ? `<span class="confirm"><button class="btn small danger" data-del="${esc(k)}">Supprimer</button><button class="btn small" data-cancel="1">Annuler</button></span>`
-        : `<button class="btn small" data-ask="${esc(k)}">Retirer</button>`}</div>`).join("");
+    el.innerHTML = list.map(p => `<div class="item">
+      <div class="m" style="grid-column:1/3"><div><b>${esc(fullName(p))}</b></div><div class="sub">${esc(p.societe||"—")}${platesOf(p.id).length ? " · "+platesOf(p.id).map(k=>`<span class="pl" style="font-size:.95rem">${esc(fmtPlate(k))}</span>`).join(", ") : ""}</div></div>
+      ${pendingDelete===p.id ? `<span class="confirm"><button class="btn small danger" data-del="${esc(p.id)}">Supprimer</button><button class="btn small" data-cancel="1">Annuler</button></span>`
+        : `<button class="btn small" data-ask="${esc(p.id)}">Retirer</button>`}</div>`).join("");
     el.querySelectorAll("[data-ask]").forEach(b => b.addEventListener("click", () => { pendingDelete=b.dataset.ask; renderPersons(); }));
     el.querySelectorAll("[data-cancel]").forEach(b => b.addEventListener("click", () => { pendingDelete=null; renderPersons(); }));
     el.querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", () => {
-      delete persons[b.dataset.del]; savePers(); pendingDelete=null; toast("Personne retirée. Son historique est conservé."); renderAll();
+      const id=b.dataset.del; for(const k of platesOf(id)) unlinkPerson(k,id); delete P[id]; saveP(); pendingDelete=null;
+      toast("Personne retirée. Son historique est conservé."); renderAll();
     }));
   }
   $("#importBtn").addEventListener("click", () => {
@@ -444,43 +575,42 @@ details summary{cursor:pointer;font-weight:600}
       const parts = l.split(/[;\t,]/).map(s=>s.trim());
       const k = key(parts[0]);
       if(!k || k.length<4 || !parts[1] || /^plaque$/i.test(parts[0])){ bad++; continue; }
-      persons[k] = { plaque:fmtPlate(k), nom:parts[1].toUpperCase(), prenom:parts[2]||"", societe:parts[3]||"", cree:new Date().toISOString() };
-      ok++;
+      linkPerson(k, createPerson(parts[1], parts[2]||"", parts[3]||"")); ok++;
     }
-    if(ok && savePers()){ $("#importText").value=""; }
-    toast(`${ok} personne(s) importée(s)` + (bad? ` · ${bad} ligne(s) ignorée(s)` : ""));
+    if(ok) $("#importText").value="";
+    toast(`${ok} ligne(s) importée(s)` + (bad? ` · ${bad} ignorée(s)` : ""));
     renderAll();
   });
 
   // ---------- RÉGLAGES ----------
   function renderSettings(){
-    $("#stPers").textContent = Object.keys(persons).length;
+    $("#stPers").textContent = Object.keys(P).length;
+    $("#stVeh").textContent = Object.keys(V).length;
     $("#stPass").textContent = passages.length;
     const last = load(K.backup, null);
     $("#stBackup").textContent = last ? new Date(last).toLocaleDateString("fr-FR",{day:"numeric",month:"short",year:"numeric"}) : "jamais";
     $("#pinState").textContent = load(K.pin, null) ? "Un code est demandé à l'ouverture de l'appli." : "Aucun code. Tu peux en ajouter un en plus du verrouillage de ton iPhone.";
   }
   async function doBackup(){
-    const data = JSON.stringify({ app:"registre-filtrage", version:1, date:new Date().toISOString(), personnes:persons, passages }, null, 1);
+    const data = JSON.stringify({ app:"registre-filtrage", version:2, date:new Date().toISOString(), personnes:P, vehicules:V, passages }, null, 1);
     const ok = await shareFile(`registre-sauvegarde-${dayOf(new Date())}.json`, data, "application/json");
     if(ok){ save(K.backup, new Date().toISOString()); renderBackupHint(); renderSettings(); }
   }
   $("#backupBtn").addEventListener("click", doBackup);
   $("#restoreBtn").addEventListener("click", () => $("#restoreFile").click());
-  let restoreData = null;
   $("#restoreFile").addEventListener("change", async e => {
     const f = e.target.files[0]; e.target.value=""; if(!f) return;
     try{
       const d = JSON.parse(await f.text());
       if(d.app!=="registre-filtrage" || typeof d.personnes!=="object" || !Array.isArray(d.passages)) throw 0;
-      restoreData = d;
-      $("#restoreConfirm").innerHTML = `<div class="notice"><span>Ce fichier contient <b>${Object.keys(d.personnes).length}</b> personnes et <b>${d.passages.length}</b> passages (sauvegarde du ${new Date(d.date).toLocaleDateString("fr-FR")}). Il remplacera tout ce qui est actuellement dans l'appli.</span>
+      let nP, nV; const nPass = d.passages;
+      if(d.version >= 2 && d.vehicules){ nP = d.personnes; nV = d.vehicules; } else { const m = migrateV1(d.personnes, nPass); nP=m.P; nV=m.V; }
+      $("#restoreConfirm").innerHTML = `<div class="notice"><span>Ce fichier contient <b>${Object.keys(nP).length}</b> personnes et <b>${nPass.length}</b> passages (sauvegarde du ${new Date(d.date).toLocaleDateString("fr-FR")}). Il remplacera tout ce qui est actuellement dans l'appli.</span>
         <div class="confirm"><button class="btn primary small" id="restoreGo">Remplacer</button><button class="btn small" id="restoreNo">Annuler</button></div></div>`;
       $("#restoreGo").addEventListener("click", () => {
-        persons = restoreData.personnes; passages = restoreData.passages;
-        savePers(); savePass(); restoreData=null; $("#restoreConfirm").innerHTML=""; toast("Sauvegarde restaurée."); renderAll(); renderSettings();
+        P=nP; V=nV; passages=nPass; saveP(); saveV(); savePass(); $("#restoreConfirm").innerHTML=""; toast("Sauvegarde restaurée."); renderAll(); renderSettings();
       });
-      $("#restoreNo").addEventListener("click", () => { restoreData=null; $("#restoreConfirm").innerHTML=""; });
+      $("#restoreNo").addEventListener("click", () => { $("#restoreConfirm").innerHTML=""; });
     }catch(err){ toast("Ce fichier n'est pas une sauvegarde du registre."); }
   });
 
@@ -492,12 +622,15 @@ details summary{cursor:pointer;font-weight:600}
   });
   $("#pinOff").addEventListener("click", () => { try{ localStorage.removeItem(K.pin); }catch(e){} toast("Code retiré."); renderSettings(); });
 
-  $("#wipeAsk").addEventListener("click", () => {
-    $("#wipeZone").innerHTML = `<div class="confirm"><span>Vraiment tout effacer ?</span><button class="btn small danger" id="wipeGo">Oui, tout effacer</button><button class="btn small" id="wipeNo">Annuler</button></div>`;
-    $("#wipeGo").addEventListener("click", () => { persons={}; passages=[]; savePers(); savePass(); try{ localStorage.removeItem(K.backup); }catch(e){} resetWipe(); toast("Registre effacé."); renderAll(); renderSettings(); });
-    $("#wipeNo").addEventListener("click", resetWipe);
-  });
-  function resetWipe(){ $("#wipeZone").innerHTML = `<button class="btn danger" id="wipeAsk2">Tout effacer</button>`; $("#wipeAsk2").addEventListener("click", () => $("#wipeAsk").click()); }
+  function wireWipe(){
+    $("#wipeZone").innerHTML = `<button class="btn danger" id="wipeAsk">Tout effacer</button>`;
+    $("#wipeAsk").addEventListener("click", () => {
+      $("#wipeZone").innerHTML = `<div class="confirm"><span>Vraiment tout effacer ?</span><button class="btn small danger" id="wipeGo">Oui, tout effacer</button><button class="btn small" id="wipeNo">Annuler</button></div>`;
+      $("#wipeGo").addEventListener("click", () => { P={}; V={}; passages=[]; saveP(); saveV(); savePass(); try{ localStorage.removeItem(K.backup); }catch(e){} wireWipe(); toast("Registre effacé."); renderAll(); renderSettings(); });
+      $("#wipeNo").addEventListener("click", wireWipe);
+    });
+  }
+  wireWipe();
 
   // ---------- Verrouillage ----------
   let hiddenAt = 0;
@@ -513,7 +646,7 @@ details summary{cursor:pointer;font-weight:600}
     else if(hiddenAt && Date.now()-hiddenAt > 3*60000) lockIfNeeded();
   });
 
-  function renderAll(){ renderResult(); renderOnsite(); renderBackupHint(); if(!$("#p-historique").hidden) renderHistory(); if(!$("#p-personnes").hidden) renderPersons(); }
+  function renderAll(){ cur.selDep = null; cur.k = null; renderResult(); renderOnsite(); renderBackupHint(); if(!$("#p-historique").hidden) renderHistory(); if(!$("#p-personnes").hidden) renderPersons(); }
   renderAll();
   lockIfNeeded();
 
