@@ -71,6 +71,10 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
 .field{display:flex;flex-direction:column;gap:4px}
 .field input,.field textarea,.search{font:500 16px var(--f-body);color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:11px 12px;width:100%}
 .field textarea{resize:vertical}
+input[type=date],input[type=time]{-webkit-appearance:none;appearance:none;display:block;min-width:0;max-width:100%;min-height:46px;text-align:left}
+input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and-time-value{text-align:left;margin:0}
+.daynav input[type=date]{text-align:center}
+.daynav input[type=date]::-webkit-date-and-time-value{text-align:center}
 .btn{font:600 .95rem var(--f-body);border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:9px;padding:10px 14px;cursor:pointer}
 .btn.primary{background:var(--eu);border-color:var(--eu);color:var(--eu-ink)}
 .btn.ok{background:var(--in);border-color:var(--in);color:var(--on-in)}
