@@ -143,6 +143,22 @@ details summary{cursor:pointer;font-weight:600}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chip{display:inline-flex;align-items:center;gap:2px;border:1px solid var(--line);border-radius:8px;padding:2px 2px 2px 10px;background:var(--surface)}
 .badgeno{font:700 1.2rem var(--f-display);color:var(--eu);min-width:3.2rem}
+.dt{display:grid;grid-template-columns:minmax(0,1fr);gap:10px}
+.dt .field{min-width:0;overflow:hidden;padding:2px}
+.field select{font:500 16px var(--f-body);color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:11px 12px;width:100%;min-height:46px}
+.sigwrap{position:relative;background:#fff;border:2px dashed #b7bfcd;border-radius:10px;height:160px;overflow:hidden}
+.sigc{width:100%;height:100%;display:block;touch-action:none}
+.sigline{position:absolute;left:12px;right:12px;bottom:28px;border-top:1px solid #c9cfda;padding-top:4px;color:#8a93a6;font-size:.82rem;pointer-events:none}
+.sigclr{align-self:flex-start;margin-top:6px}
+.sigimg{display:block;background:#fff;border:1px solid var(--line);border-radius:8px;max-width:100%;height:auto;max-height:110px;margin-top:6px}
+.bitem{border-top:1px solid var(--line)}
+.bitem:first-child{border-top:0}
+.bitem > .editbox{margin:0 12px 12px}
+.tap{all:unset;cursor:pointer;min-width:0;display:flex;flex-direction:column}
+.tap:focus-visible{outline:3px solid var(--eu);outline-offset:2px;border-radius:6px}
+.tap b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.detail{display:flex;flex-direction:column;gap:14px;margin:0 12px 12px;padding:12px;background:var(--bg);border-radius:10px;font-size:.95rem}
+.swapp{background:var(--out-soft);color:var(--out);font-size:.75rem;padding:2px 8px}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -211,23 +227,27 @@ details summary{cursor:pointer;font-weight:600}
     <div class="card">
       <h2>Remettre un badge ou une clé</h2>
       <div class="field"><label class="label" for="bNum">N° du badge ou de la clé</label><input id="bNum" autocomplete="off" autocorrect="off" autocapitalize="characters"></div>
+      <span class="label">Remis à</span>
       <div class="row">
         <div class="field"><label class="label" for="bNom">Nom</label><input id="bNom" autocomplete="off" autocorrect="off" autocapitalize="characters"></div>
         <div class="field"><label class="label" for="bPrenom">Prénom</label><input id="bPrenom" autocomplete="off" autocorrect="off" autocapitalize="words"></div>
       </div>
       <div class="sugg" id="bSugg"></div>
-      <div class="field"><label class="label" for="bSoc">Entreprise</label><input id="bSoc" autocomplete="off" autocorrect="off" list="socListB"></div>
+      <div class="field"><label class="label" for="bSoc">Société</label><input id="bSoc" autocomplete="off" autocorrect="off" list="socListB"></div>
       <datalist id="socListB"></datalist>
-      <div class="row">
+      <div class="dt">
         <div class="field"><label class="label" for="bDate">Date</label><input type="date" id="bDate"></div>
         <div class="field"><label class="label" for="bHeure">Heure</label><input type="time" id="bHeure"></div>
       </div>
       <p class="hint">La date et l'heure se remplissent toutes seules. Tu peux les changer si tu notes une remise après coup.</p>
+      <div id="bAgentBox"></div>
+      <div class="field"><span class="label">Signature de la personne qui reçoit</span><div id="bSig"></div></div>
       <button class="big arr" id="bSave">Enregistrer la remise</button>
     </div>
     <div class="sectionhead"><span class="label">Pas encore rendus</span><span class="count" id="bCount">0</span></div>
     <div class="list" id="bOpen"></div>
-    <div class="sectionhead"><span class="label">Rendus récemment</span></div>
+    <div class="sectionhead"><span class="label">Rendus récemment</span><button class="btn small" id="bExport">Exporter CSV</button></div>
+    <p class="hint">Touche une ligne pour voir le détail complet : qui a remis, qui a rendu, et les signatures.</p>
     <div class="list" id="bDone"></div>
   </section>
 
@@ -259,6 +279,12 @@ details summary{cursor:pointer;font-weight:600}
         <button class="btn primary" id="rappelSave">Enregistrer</button>
         <button class="btn" id="rappelOff">Désactiver</button>
       </div>
+    </div>
+    <div class="card">
+      <h2>Agents</h2>
+      <p class="hint">L'agent en service est proposé par défaut pour les remises et les retours de badges. Tu peux en enregistrer plusieurs (relève, collègues).</p>
+      <div id="agentAddBox"></div>
+      <div class="list" id="agentList"></div>
     </div>
     <div class="card">
       <h2>Mes données</h2>
@@ -327,7 +353,7 @@ details summary{cursor:pointer;font-weight:600}
   const atLocal = (day, time) => new Date(day+"T"+time+":00");
 
   // ---------- STOCKAGE LOCAL (uniquement sur ce téléphone) ----------
-  const K = { p:"reg.p2", v:"reg.v2", vn:"reg.vn", pass:"reg.passages", badges:"reg.badges", set:"reg.set", dismiss:"reg.dismiss", old:"reg.personnes", backup:"reg.lastBackup", pin:"reg.pin" };
+  const K = { p:"reg.p2", v:"reg.v2", vn:"reg.vn", pass:"reg.passages", badges:"reg.badges", set:"reg.set", dismiss:"reg.dismiss", old:"reg.personnes", backup:"reg.lastBackup", pin:"reg.pin", agents:"reg.agents" };
   function load(k, def){ try{ const v=localStorage.getItem(k); return v ? JSON.parse(v) : def; }catch(e){ return def; } }
   function save(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); return true; }catch(e){ toast("Mémoire du téléphone pleine : fais une sauvegarde puis efface d'anciens passages."); return false; } }
   function migrateV1(oldPers, pass){
@@ -342,6 +368,8 @@ details summary{cursor:pointer;font-weight:600}
     save(K.p,P); save(K.v,V); save(K.pass,passages);
     try{ localStorage.removeItem(K.old); }catch(e){}
   }
+  let A = load(K.agents, []);
+  const saveA = () => save(K.agents, A);
   let VN = load(K.vn, {}), B = load(K.badges, []), S = Object.assign({ rappel:"18:00" }, load(K.set, {}));
   const saveP = () => save(K.p, P), saveV = () => save(K.v, V), saveVN = () => save(K.vn, VN), savePass = () => save(K.pass, passages), saveB = () => save(K.badges, B), saveS = () => save(K.set, S);
   if(navigator.storage && navigator.storage.persist){ navigator.storage.persist().catch(()=>{}); }
@@ -402,9 +430,9 @@ details summary{cursor:pointer;font-weight:600}
     document.querySelectorAll("nav button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab===t ? "true":"false"));
     ["filtrage","historique","badges","personnes","reglages"].forEach(n => $("#p-"+n).hidden = n!==t);
     if(t==="historique") renderHistory();
-    if(t==="badges"){ refreshBadgeClock(); renderBadges(); }
+    if(t==="badges"){ refreshBadgeClock(); renderBadges(); bPad.reset(); }
     if(t==="personnes") renderPersons();
-    if(t==="reglages") renderSettings();
+    if(t==="reglages"){ renderSettings(); renderAgents(); settingsAgent.redraw(); }
     window.scrollTo(0,0);
   }
 
@@ -642,7 +670,7 @@ details summary{cursor:pointer;font-weight:600}
       ${editId===r.id ? "<span></span>" : `<button class="btn small" data-edit="${esc(r.id)}">Modifier</button>`}`;
       if(editId===r.id){
         h += `<div class="editbox">
-          <div class="row">
+          <div class="dt">
             <div class="field"><label class="label" for="eA">Heure d'arrivée</label><input type="time" id="eA" value="${hm(r.arrivee)}"></div>
             <div class="field"><label class="label" for="eD">Heure de départ</label><input type="time" id="eD" value="${hm(r.depart)}"></div>
           </div>
@@ -700,67 +728,243 @@ details summary{cursor:pointer;font-weight:600}
     shareFile(`filtrage-${histDate.value}.csv`, "﻿"+lines.join("\r\n"), "text/csv");
   });
 
+  // ---------- AGENTS ----------
+  const agentLabel = a => a ? fullName(a) + (a.societe ? " · " + a.societe : "") : "—";
+  const snap = a => a ? { nom:a.nom||"", prenom:a.prenom||"", societe:a.societe||"" } : null;
+  function agentPicker(box, label, onPick){
+    let sel = (A.find(a => a.id === S.agent) || A[0] || {}).id || "";
+    let adding = !A.length;
+    const draw = () => {
+      box.innerHTML = `<div class="field"><span class="label">${esc(label)}</span>
+        ${adding ? "" : `<select class="sel" aria-label="${esc(label)}">${A.map(a=>`<option value="${esc(a.id)}" ${a.id===sel?"selected":""}>${esc(agentLabel(a))}</option>`).join("")}<option value="__new">+ Ajouter un agent…</option></select>`}
+        ${adding ? `<div class="addp"><span class="sub">${A.length ? "Nouvel agent" : "Aucun agent enregistré : indique qui tu es (une seule fois, l'appli s'en souviendra)."}</span>
+          <div class="row"><div class="field"><input class="aNom" placeholder="Nom" aria-label="Nom de l'agent" autocapitalize="characters" autocomplete="off" autocorrect="off"></div>
+          <div class="field"><input class="aPrenom" placeholder="Prénom" aria-label="Prénom de l'agent" autocomplete="off" autocorrect="off"></div></div>
+          <div class="field"><input class="aSoc" placeholder="Société" aria-label="Société de l'agent" autocomplete="off" autocorrect="off"></div>
+          <div class="confirm"><button class="btn small primary aAdd" type="button">Ajouter l'agent</button>${A.length ? '<button class="btn small aCancel" type="button">Annuler</button>' : ""}</div></div>` : ""}
+      </div>`;
+      const s = box.querySelector(".sel");
+      if(s) s.addEventListener("change", () => {
+        if(s.value === "__new"){ adding = true; draw(); return; }
+        sel = s.value; S.agent = sel; saveS(); if(onPick) onPick(sel);
+      });
+      const add = box.querySelector(".aAdd");
+      if(add) add.addEventListener("click", () => {
+        const nom = box.querySelector(".aNom").value.trim();
+        if(!nom){ toast("Indique le nom de l'agent."); return; }
+        const a = { id:uid(), nom:nom.toUpperCase(), prenom:box.querySelector(".aPrenom").value.trim(), societe:box.querySelector(".aSoc").value.trim() };
+        A.push(a); saveA(); sel = a.id; S.agent = sel; saveS(); adding = false; draw(); toast("Agent ajouté."); if(onPick) onPick(sel);
+      });
+      const c = box.querySelector(".aCancel"); if(c) c.addEventListener("click", () => { adding = false; draw(); });
+    };
+    draw();
+    return { get: () => adding ? null : (A.find(a => a.id === sel) || null), redraw: () => { sel = (A.find(a => a.id === S.agent) || A[0] || {}).id || ""; adding = !A.length; draw(); } };
+  }
+
+  // ---------- SIGNATURE ----------
+  function sigPad(box){
+    box.innerHTML = `<div class="sigwrap"><canvas class="sigc" aria-label="Zone de signature"></canvas><span class="sigline">Signer ici avec le doigt</span></div>
+      <button class="btn small sigclr" type="button">Effacer la signature</button>`;
+    const c = box.querySelector("canvas"), ctx = c.getContext("2d"), hint = box.querySelector(".sigline");
+    let empty = true, drawing = false, last = null;
+    const setup = () => {
+      const r = c.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+      if(!r.width) return;
+      c.width = Math.round(r.width*dpr); c.height = Math.round(r.height*dpr);
+      ctx.setTransform(dpr,0,0,dpr,0,0); ctx.lineWidth = 2.6; ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.strokeStyle = "#111"; ctx.fillStyle = "#111";
+      empty = true; hint.hidden = false;
+    };
+    const pos = e => { const r = c.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+    c.addEventListener("pointerdown", e => {
+      if(!c.width || c.width < 10) setup();
+      e.preventDefault(); try{ c.setPointerCapture(e.pointerId); }catch(_){}
+      drawing = true; last = pos(e); ctx.beginPath(); ctx.arc(last[0], last[1], 1.3, 0, 7); ctx.fill(); empty = false; hint.hidden = true;
+    });
+    c.addEventListener("pointermove", e => {
+      if(!drawing) return; e.preventDefault();
+      const p = pos(e); ctx.beginPath(); ctx.moveTo(last[0], last[1]); ctx.lineTo(p[0], p[1]); ctx.stroke(); last = p;
+    });
+    const end = () => { drawing = false; };
+    c.addEventListener("pointerup", end); c.addEventListener("pointercancel", end); c.addEventListener("pointerleave", end);
+    box.querySelector(".sigclr").addEventListener("click", setup);
+    requestAnimationFrame(setup);
+    return {
+      isEmpty: () => empty,
+      reset: setup,
+      data: () => { const w = 360, h = Math.max(1, Math.round(w * c.height / c.width)); const o = document.createElement("canvas"); o.width = w; o.height = h; o.getContext("2d").drawImage(c, 0, 0, w, h); return o.toDataURL("image/png"); }
+    };
+  }
+  const sigImg = (src, who) => src ? `<img class="sigimg" src="${esc(src)}" alt="Signature de ${esc(who)}">` : `<span class="sub">Pas de signature enregistrée</span>`;
+
   // ---------- BADGES / CLÉS ----------
-  let bTouched = false, bDelAsk = null;
+  let bTouched = false, bDelAsk = null, bShow = null, rOpen = null, rState = null;
+  const bAgent = agentPicker($("#bAgentBox"), "Remis par (agent)", () => {});
+  const bPad = sigPad($("#bSig"));
   function refreshBadgeClock(){ if(bTouched) return; const n=new Date(); $("#bDate").value = dayOf(n); $("#bHeure").value = hmOf(n); }
   ["bDate","bHeure"].forEach(id => $("#"+id).addEventListener("input", () => bTouched = true));
-  function updBadgeSugg(){
-    const el = $("#bSugg");
-    const terms = norm($("#bNom").value + " " + $("#bPrenom").value).split(/\s+/).filter(Boolean);
-    if(!terms.length || norm($("#bNom").value).length < 2){ el.innerHTML=""; return; }
-    const hits = Object.values(P).filter(p => terms.every(t => norm(p.nom+" "+p.prenom).includes(t)))
-      .filter(p => !(norm(p.nom)===norm($("#bNom").value) && norm(p.prenom)===norm($("#bPrenom").value))).slice(0,4);
-    el.innerHTML = hits.length ? `<span class="label">Déjà connu ?</span>` + hits.map(p =>
-      `<button data-bpick="${esc(p.id)}"><span><b>${esc(fullName(p))}</b></span><span class="sub">${esc(p.societe||"—")}</span></button>`).join("") : "";
-    el.querySelectorAll("[data-bpick]").forEach(b => b.addEventListener("click", () => {
-      const p = P[b.dataset.bpick]; $("#bNom").value=p.nom; $("#bPrenom").value=p.prenom; $("#bSoc").value=p.societe||""; el.innerHTML="";
-    }));
+  function personSuggest(nomEl, prenomEl, socEl, out){
+    const upd = () => {
+      const terms = norm(nomEl.value + " " + prenomEl.value).split(/\s+/).filter(Boolean);
+      if(!terms.length || norm(nomEl.value).length < 2){ out.innerHTML=""; return; }
+      const hits = Object.values(P).filter(p => terms.every(t => norm(p.nom+" "+p.prenom).includes(t)))
+        .filter(p => !(norm(p.nom)===norm(nomEl.value) && norm(p.prenom)===norm(prenomEl.value))).slice(0,4);
+      out.innerHTML = hits.length ? `<span class="label">Déjà connu ?</span>` + hits.map(p =>
+        `<button type="button" data-spick="${esc(p.id)}"><span><b>${esc(fullName(p))}</b></span><span class="sub">${esc(p.societe||"—")}</span></button>`).join("") : "";
+      out.querySelectorAll("[data-spick]").forEach(b => b.addEventListener("click", () => {
+        const p = P[b.dataset.spick]; nomEl.value=p.nom; prenomEl.value=p.prenom; socEl.value=p.societe||""; out.innerHTML="";
+        nomEl.dispatchEvent(new Event("change"));
+      }));
+    };
+    nomEl.addEventListener("input", upd); prenomEl.addEventListener("input", upd);
   }
-  $("#bNom").addEventListener("input", updBadgeSugg); $("#bPrenom").addEventListener("input", updBadgeSugg);
+  personSuggest($("#bNom"), $("#bPrenom"), $("#bSoc"), $("#bSugg"));
+
   $("#bSave").addEventListener("click", () => {
     const numero = $("#bNum").value.trim(), nom = $("#bNom").value.trim(), prenom = $("#bPrenom").value.trim(), societe = $("#bSoc").value.trim();
-    const d = $("#bDate").value, h = $("#bHeure").value;
+    const d = $("#bDate").value, h = $("#bHeure").value, agent = bAgent.get();
     if(!numero){ toast("Indique le numéro du badge ou de la clé."); $("#bNum").focus(); return; }
     if(!nom){ toast("Indique au moins le nom."); $("#bNom").focus(); return; }
     if(!d || !h){ toast("Indique la date et l'heure."); return; }
+    if(!agent){ toast("Indique l'agent qui remet le badge."); return; }
+    if(bPad.isEmpty()){ toast("Fais signer la personne qui reçoit le badge."); return; }
     const dup = openBadges().find(b => norm(b.numero) === norm(numero));
     if(dup){ toast(`Le n° ${numero} est déjà noté chez ${fullName(dup)}. Restitue-le d'abord.`); return; }
-    const b = { id:uid(), numero, nom:nom.toUpperCase(), prenom, societe, remis:atLocal(d,h).toISOString(), rendu:null };
+    const b = { id:uid(), numero, nom:nom.toUpperCase(), prenom, societe, remis:atLocal(d,h).toISOString(), agentRemise:snap(agent), sigRemise:bPad.data(), rendu:null };
     B.push(b); if(!saveB()){ B.pop(); return; }
-    ["bNum","bNom","bPrenom","bSoc"].forEach(id => $("#"+id).value=""); $("#bSugg").innerHTML="";
+    ["bNum","bNom","bPrenom","bSoc"].forEach(id => $("#"+id).value=""); $("#bSugg").innerHTML=""; bPad.reset();
     bTouched = false; refreshBadgeClock();
     toast(`Badge ${numero} remis à ${fullName(b)}.`, { label:"Annuler", fn:() => { B = B.filter(x=>x!==b); saveB(); renderBadges(); renderRappel(); } });
     renderBadges(); renderRappel();
   });
+
+  function detailHTML(b){
+    let h = `<div class="detail">
+      <div><span class="label">Remise</span>
+        <div>${dmy(b.remis)} à ${hm(b.remis)} · à <b>${esc(fullName(b))}</b>${b.societe ? " ("+esc(b.societe)+")" : ""}</div>
+        <div class="sub">Remis par l'agent ${esc(agentLabel(b.agentRemise))}</div>
+        ${sigImg(b.sigRemise, fullName(b))}</div>`;
+    if(b.rendu){
+      const rp = b.renduPar || b;
+      h += `<div><span class="label">Restitution</span>
+        <div>${dmy(b.rendu)} à ${hm(b.rendu)} · par <b>${esc(fullName(rp))}</b>${rp.societe ? " ("+esc(rp.societe)+")" : ""}${b.renduPar && (norm(fullName(rp)) !== norm(fullName(b))) ? ' <span class="pill swapp">autre personne</span>' : ""}</div>
+        <div class="sub">Réceptionné par l'agent ${esc(agentLabel(b.agentRendu))}</div>
+        ${sigImg(b.sigRendu, fullName(rp))}</div>`;
+    }
+    return h + `</div>`;
+  }
+
+  function restitHTML(b){
+    return `<div class="editbox">
+      <span class="label">Rendu par</span>
+      <p class="hint">Prérempli avec la personne qui l'a reçu. Si c'est quelqu'un d'autre qui ramène la clé, change le nom.</p>
+      <div class="row">
+        <div class="field"><label class="label" for="rNom">Nom</label><input id="rNom" value="${esc(b.nom)}" autocomplete="off" autocorrect="off" autocapitalize="characters"></div>
+        <div class="field"><label class="label" for="rPrenom">Prénom</label><input id="rPrenom" value="${esc(b.prenom)}" autocomplete="off" autocorrect="off"></div>
+      </div>
+      <div class="sugg" id="rSugg"></div>
+      <div class="field"><label class="label" for="rSoc">Société</label><input id="rSoc" value="${esc(b.societe)}" autocomplete="off" autocorrect="off" list="socListB"></div>
+      <div class="dt">
+        <div class="field"><label class="label" for="rDate">Date</label><input type="date" id="rDate"></div>
+        <div class="field"><label class="label" for="rHeure">Heure</label><input type="time" id="rHeure"></div>
+      </div>
+      <div id="rAgentBox"></div>
+      <div class="field"><span class="label">Signature de la personne qui rend</span><div id="rSig"></div></div>
+      <div class="confirm"><button class="btn ok" id="rGo">Valider la restitution</button><button class="btn" id="rNo">Annuler</button></div>
+    </div>`;
+  }
+
   function renderBadges(){
     $("#socListB").innerHTML = societes().map(s=>`<option value="${esc(s)}">`).join("");
     const open = openBadges().sort((a,b)=> a.remis < b.remis ? -1 : 1);
     $("#bCount").textContent = open.length;
     const dot = $("#badgeDot"); dot.hidden = !open.length; dot.textContent = open.length;
     const el = $("#bOpen");
-    el.innerHTML = open.length ? open.map(b => `<div class="item">
-      <span class="badgeno">${esc(b.numero)}</span>
-      <div class="m"><b>${esc(fullName(b))}</b><span class="sub">${esc(b.societe||"—")} · remis le ${dmy(b.remis)} à ${hm(b.remis)}</span></div>
-      <div class="acts">${bDelAsk===b.id
-        ? `<button class="btn small danger" data-bdel="${esc(b.id)}">Supprimer</button><button class="btn small" data-bno="1">Non</button>`
-        : `<button class="btn small ok" data-bret="${esc(b.id)}">Restituer</button><button class="x" data-bask="${esc(b.id)}" aria-label="Supprimer (erreur)">×</button>`}</div></div>`).join("")
-      : `<div class="empty">Aucun badge ni clé en circulation.</div>`;
-    el.querySelectorAll("[data-bret]").forEach(x => x.addEventListener("click", () => {
-      const b = B.find(y=>y.id===x.dataset.bret); b.rendu = new Date().toISOString(); saveB();
-      toast(`${b.numero} rendu à ${hm(b.rendu)}.`, { label:"Annuler", fn:() => { b.rendu=null; saveB(); renderBadges(); renderRappel(); } });
-      renderBadges(); renderRappel();
-    }));
+    el.innerHTML = open.length ? open.map(b => `<div class="bitem">
+      <div class="item" style="border-top:0">
+        <span class="badgeno">${esc(b.numero)}</span>
+        <button class="m tap" data-bshow="${esc(b.id)}" aria-expanded="${bShow===b.id}"><b>${esc(fullName(b))}</b><span class="sub">${esc(b.societe||"—")} · remis le ${dmy(b.remis)} à ${hm(b.remis)}</span></button>
+        <div class="acts">${bDelAsk===b.id
+          ? `<button class="btn small danger" data-bdel="${esc(b.id)}">Supprimer</button><button class="btn small" data-bno="1">Non</button>`
+          : rOpen===b.id ? "" : `<button class="btn small ok" data-bret="${esc(b.id)}">Restituer</button><button class="x" data-bask="${esc(b.id)}" aria-label="Supprimer (erreur)">×</button>`}</div>
+      </div>
+      ${bShow===b.id && rOpen!==b.id ? detailHTML(b) : ""}
+      ${rOpen===b.id ? restitHTML(b) : ""}
+    </div>`).join("") : `<div class="empty">Aucun badge ni clé en circulation.</div>`;
+
+    el.querySelectorAll("[data-bshow]").forEach(x => x.addEventListener("click", () => { bShow = bShow===x.dataset.bshow ? null : x.dataset.bshow; renderBadges(); }));
+    el.querySelectorAll("[data-bret]").forEach(x => x.addEventListener("click", () => { rOpen = x.dataset.bret; bShow = null; bDelAsk = null; renderBadges(); }));
     el.querySelectorAll("[data-bask]").forEach(x => x.addEventListener("click", () => { bDelAsk = x.dataset.bask; renderBadges(); }));
     el.querySelectorAll("[data-bno]").forEach(x => x.addEventListener("click", () => { bDelAsk = null; renderBadges(); }));
     el.querySelectorAll("[data-bdel]").forEach(x => x.addEventListener("click", () => { B = B.filter(y=>y.id!==x.dataset.bdel); saveB(); bDelAsk=null; toast("Remise supprimée."); renderBadges(); renderRappel(); }));
 
-    const done = B.filter(b => b.rendu).sort((a,b)=> a.rendu < b.rendu ? 1 : -1).slice(0,30);
-    $("#bDone").innerHTML = done.length ? done.map(b => `<div class="item">
-      <span class="badgeno" style="color:var(--muted)">${esc(b.numero)}</span>
-      <div class="m"><b>${esc(fullName(b))}</b><span class="sub">${esc(b.societe||"—")}</span>
-      <span class="sub">Remis ${dmy(b.remis)} ${hm(b.remis)} · rendu ${dmy(b.rendu)} ${hm(b.rendu)}</span></div><span></span></div>`).join("")
+    const b = B.find(y => y.id === rOpen);
+    if(b && $("#rGo")){
+      const n = new Date(); $("#rDate").value = dayOf(n); $("#rHeure").value = hmOf(n);
+      personSuggest($("#rNom"), $("#rPrenom"), $("#rSoc"), $("#rSugg"));
+      const rAgent = agentPicker($("#rAgentBox"), "Réceptionné par (agent)", () => {});
+      const rPad = sigPad($("#rSig"));
+      $("#rNom").scrollIntoView({ block:"center", behavior:"smooth" });
+      $("#rGo").addEventListener("click", () => {
+        const nom = $("#rNom").value.trim(), prenom = $("#rPrenom").value.trim(), societe = $("#rSoc").value.trim();
+        const d = $("#rDate").value, h = $("#rHeure").value, agent = rAgent.get();
+        if(!nom){ toast("Indique qui rend la clé."); $("#rNom").focus(); return; }
+        if(!d || !h){ toast("Indique la date et l'heure."); return; }
+        if(!agent){ toast("Indique l'agent qui réceptionne."); return; }
+        if(rPad.isEmpty()){ toast("Fais signer la personne qui rend la clé."); return; }
+        const t = atLocal(d, h);
+        if(t < new Date(b.remis)){ toast("L'heure de retour est avant l'heure de remise."); return; }
+        b.rendu = t.toISOString(); b.renduPar = { nom:nom.toUpperCase(), prenom, societe }; b.agentRendu = snap(agent); b.sigRendu = rPad.data();
+        if(!saveB()){ b.rendu = null; return; }
+        rOpen = null;
+        toast(`${b.numero} rendu à ${hm(b.rendu)}.`, { label:"Annuler", fn:() => { b.rendu=null; delete b.renduPar; delete b.agentRendu; delete b.sigRendu; saveB(); renderBadges(); renderRappel(); } });
+        renderBadges(); renderRappel();
+      });
+      $("#rNo").addEventListener("click", () => { rOpen = null; renderBadges(); });
+    }
+
+    const done = B.filter(x => x.rendu).sort((a,b)=> a.rendu < b.rendu ? 1 : -1).slice(0,40);
+    const dl = $("#bDone");
+    dl.innerHTML = done.length ? done.map(b => {
+      const rp = b.renduPar || b, other = b.renduPar && norm(fullName(rp)) !== norm(fullName(b));
+      return `<div class="bitem"><div class="item" style="border-top:0">
+        <span class="badgeno" style="color:var(--muted)">${esc(b.numero)}</span>
+        <button class="m tap" data-dshow="${esc(b.id)}" aria-expanded="${bShow===b.id}"><b>${esc(fullName(b))}</b>
+          <span class="sub">Remis ${dmy(b.remis)} ${hm(b.remis)} · rendu ${dmy(b.rendu)} ${hm(b.rendu)}</span>
+          ${other ? `<span class="sub">Rendu par ${esc(fullName(rp))}</span>` : ""}</button><span></span></div>
+        ${bShow===b.id ? detailHTML(b) : ""}</div>`; }).join("")
       : `<div class="empty">Rien pour l'instant.</div>`;
+    dl.querySelectorAll("[data-dshow]").forEach(x => x.addEventListener("click", () => { bShow = bShow===x.dataset.dshow ? null : x.dataset.dshow; renderBadges(); }));
+    $("#bExport").disabled = !B.length;
   }
+
+  $("#bExport").addEventListener("click", () => {
+    const q = v => '"'+String(v??"").replace(/"/g,'""')+'"';
+    const ag = a => a ? fullName(a) + (a.societe ? " ("+a.societe+")" : "") : "";
+    const rows = B.slice().sort((a,b)=> a.remis < b.remis ? -1 : 1).map(b => {
+      const rp = b.rendu ? (b.renduPar || b) : null;
+      return [b.numero, dmy(b.remis)+"/"+new Date(b.remis).getFullYear(), hm(b.remis), b.nom, b.prenom, b.societe, ag(b.agentRemise), b.sigRemise ? "oui" : "non",
+        b.rendu ? dmy(b.rendu)+"/"+new Date(b.rendu).getFullYear() : "", hm(b.rendu), rp ? rp.nom : "", rp ? rp.prenom : "", rp ? rp.societe : "", ag(b.agentRendu), b.rendu ? (b.sigRendu ? "oui" : "non") : ""].map(q).join(";");
+    });
+    const head = ["N°","Date remise","Heure remise","Nom","Prénom","Société","Agent remise","Signé à la remise","Date retour","Heure retour","Rendu par nom","Rendu par prénom","Rendu par société","Agent réception","Signé au retour"].join(";");
+    shareFile(`badges-${dayOf(new Date())}.csv`, "﻿"+[head].concat(rows).join("\r\n"), "text/csv");
+  });
+
+  // ---------- AGENTS (réglages) ----------
+  let aDelAsk = null;
+  function renderAgents(){
+    const el = $("#agentList");
+    el.innerHTML = A.length ? A.map(a => `<div class="item" style="grid-template-columns:1fr auto">
+      <div class="m"><b>${esc(fullName(a))}</b><span class="sub">${esc(a.societe||"—")}${a.id===S.agent ? " · agent sélectionné" : ""}</span></div>
+      <div class="acts">${aDelAsk===a.id ? `<button class="btn small danger" data-adel="${esc(a.id)}">Supprimer</button><button class="btn small" data-ano="1">Non</button>` : `<button class="x" data-aask="${esc(a.id)}" aria-label="Supprimer l'agent">×</button>`}</div></div>`).join("")
+      : `<div class="empty">Aucun agent. Le premier sera demandé à la première remise de badge.</div>`;
+    el.querySelectorAll("[data-aask]").forEach(x => x.addEventListener("click", () => { aDelAsk = x.dataset.aask; renderAgents(); }));
+    el.querySelectorAll("[data-ano]").forEach(x => x.addEventListener("click", () => { aDelAsk = null; renderAgents(); }));
+    el.querySelectorAll("[data-adel]").forEach(x => x.addEventListener("click", () => {
+      A = A.filter(a => a.id !== x.dataset.adel); saveA(); if(S.agent === x.dataset.adel){ S.agent = A[0] ? A[0].id : ""; saveS(); }
+      aDelAsk = null; bAgent.redraw(); renderAgents(); toast("Agent supprimé. Les remises passées gardent son nom.");
+    }));
+  }
+  const settingsAgent = agentPicker($("#agentAddBox"), "Agent en service", () => { bAgent.redraw(); renderAgents(); });
 
   // ---------- PERSONNES ----------
   let pEdit = null, pDelAsk = false;
@@ -847,7 +1051,7 @@ details summary{cursor:pointer;font-weight:600}
   $("#rappelOff").addEventListener("click", () => { S.rappel = ""; saveS(); toast("Rappel désactivé."); renderSettings(); renderRappel(); });
 
   async function doBackup(){
-    const data = JSON.stringify({ app:"registre-filtrage", version:3, date:new Date().toISOString(), personnes:P, vehicules:V, notesVehicules:VN, passages, badges:B, reglages:S }, null, 1);
+    const data = JSON.stringify({ app:"registre-filtrage", version:3, date:new Date().toISOString(), personnes:P, vehicules:V, notesVehicules:VN, passages, badges:B, agents:A, reglages:S }, null, 1);
     const ok = await shareFile(`registre-sauvegarde-${dayOf(new Date())}.json`, data, "application/json");
     if(ok){ save(K.backup, new Date().toISOString()); renderBackupHint(); renderSettings(); }
   }
@@ -860,11 +1064,11 @@ details summary{cursor:pointer;font-weight:600}
       if(d.app!=="registre-filtrage" || typeof d.personnes!=="object" || !Array.isArray(d.passages)) throw 0;
       let nP, nV; const nPass = d.passages;
       if(d.version >= 2 && d.vehicules){ nP = d.personnes; nV = d.vehicules; } else { const m = migrateV1(d.personnes, nPass); nP=m.P; nV=m.V; }
-      const nVN = d.notesVehicules || {}, nB = Array.isArray(d.badges) ? d.badges : [], nS = Object.assign({ rappel:"18:00" }, d.reglages || {});
+      const nVN = d.notesVehicules || {}, nB = Array.isArray(d.badges) ? d.badges : [], nS = Object.assign({ rappel:"18:00" }, d.reglages || {}), nA = Array.isArray(d.agents) ? d.agents : A;
       $("#restoreConfirm").innerHTML = `<div class="notice"><span>Ce fichier contient <b>${Object.keys(nP).length}</b> personnes, <b>${nPass.length}</b> passages et <b>${nB.length}</b> remises de badges (sauvegarde du ${new Date(d.date).toLocaleDateString("fr-FR")}). Il remplacera tout ce qui est actuellement dans l'appli.</span>
         <div class="confirm"><button class="btn primary small" id="restoreGo">Remplacer</button><button class="btn small" id="restoreNo">Annuler</button></div></div>`;
       $("#restoreGo").addEventListener("click", () => {
-        P=nP; V=nV; VN=nVN; passages=nPass; B=nB; S=nS; saveP(); saveV(); saveVN(); savePass(); saveB(); saveS();
+        P=nP; V=nV; VN=nVN; passages=nPass; B=nB; S=nS; A=nA; saveP(); saveV(); saveVN(); savePass(); saveB(); saveS(); saveA(); bAgent.redraw();
         $("#restoreConfirm").innerHTML=""; toast("Sauvegarde restaurée."); renderAll(); renderSettings();
       });
       $("#restoreNo").addEventListener("click", () => { $("#restoreConfirm").innerHTML=""; });

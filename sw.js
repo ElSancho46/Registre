@@ -1,5 +1,5 @@
 // Fait fonctionner l'appli sans internet. Aucune donnée n'est envoyée nulle part.
-const CACHE = "registre-v3";
+const CACHE = "registre-v4";
 const FILES = ["./", "./index.html", "./manifest.webmanifest", "./icon-180.png", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", e => {
