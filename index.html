@@ -94,6 +94,7 @@ input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and
 .item .m b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .acts{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
 .sub{color:var(--muted);font-size:.9rem}
+.nw{white-space:nowrap}
 .empty{padding:22px 16px;color:var(--muted);text-align:center}
 .note{background:var(--note-bg);border:1px solid var(--note-line);border-radius:10px;padding:10px 12px;font-size:.95rem;white-space:pre-wrap}
 .note .label{display:block;margin-bottom:2px}
@@ -104,10 +105,21 @@ input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and
 .tools .search{flex:1 1 180px;width:auto;background:var(--surface)}
 .stats{display:flex;gap:18px;flex-wrap:wrap;color:var(--muted);font-size:.92rem}
 .stats b{color:var(--fg);font-family:var(--f-display);font-size:1.15rem}
-.hrow{display:grid;grid-template-columns:4.2rem 1fr auto;gap:12px;padding:12px 14px;border-top:1px solid var(--line);align-items:start}
+.hrow{display:grid;grid-template-columns:4.6rem 1fr auto;gap:12px;padding:12px 14px;border-top:1px solid var(--line);align-items:start}
 .hrow:first-child{border-top:0}
 .times{display:flex;flex-direction:column;font:700 1.1rem/1.2 var(--f-display);font-variant-numeric:tabular-nums}
 .times .a{color:var(--in)} .times .d{color:var(--out)}
+.times .tl{font:600 .64rem var(--f-body);text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.times .tl + .a, .times .tl + .d{margin-bottom:6px}
+details.soc{border-top:1px solid var(--line)}
+details.soc:first-child{border-top:0}
+details.soc summary{list-style:none;display:flex;align-items:center;gap:10px;padding:14px;cursor:pointer;font:700 1.15rem var(--f-display);text-transform:uppercase;letter-spacing:.04em}
+details.soc summary::-webkit-details-marker{display:none}
+.socname{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.soccount{min-width:28px;height:28px;border-radius:14px;background:var(--in-soft);color:var(--in);font:700 .95rem/28px var(--f-body);text-align:center;padding:0 8px}
+.chev{width:10px;height:10px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);margin:0 4px 4px}
+details.soc[open] .chev{transform:rotate(-135deg);margin-bottom:-4px}
+details.soc .gp{border-top:1px dashed var(--line);padding-top:10px}
 .hrow .m{min-width:0;display:flex;flex-direction:column;gap:1px}
 .editbox{grid-column:1/-1;display:flex;flex-direction:column;gap:10px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:12px 16px;border-radius:10px;font-weight:600;width:max-content;max-width:calc(100% - 32px);z-index:30;display:flex;gap:14px;align-items:center}
@@ -609,23 +621,30 @@ details summary{cursor:pointer;font-weight:600}
     if(depart(rows, fmtPlate(k))){ plateInput.value=""; renderAll(); }
   }
 
+  const socOpen = new Set();
   function renderOnsite(){
     const open = openPassages();
     $("#onsiteCount").textContent = open.length;
     const el = $("#onsiteList");
     if(!open.length){ el.innerHTML = `<div class="empty">Personne sur site.</div>`; return; }
     const groups = new Map();
-    for(const r of open){ const g = r.grp||r.id; if(!groups.has(g)) groups.set(g, []); groups.get(g).push(r); }
-    const list = [...groups.values()].sort((a,b)=> a[0].arrivee < b[0].arrivee ? 1 : -1);
-    el.innerHTML = list.map(g => `<div class="grp">
-      <div class="gh"><span class="t">${hm(g[0].arrivee)}</span><span class="pl">${esc(g[0].plaque)}</span>
-        ${g.length>1 ? `<button class="btn small" data-gdep="${esc(g[0].grp||g[0].id)}">Tous partent</button>` : ""}</div>
-      ${g.map(r => `<div class="gp"><div class="m"><b>${esc(fullName(r))}</b><span class="sub">${esc(r.societe||"—")}${pnote(P[r.pid])}</span></div>
-        <div class="acts"><button class="btn small" data-badge="${esc(r.id)}">Badge</button><button class="btn small" data-pdep="${esc(r.id)}">Départ</button></div></div>`).join("")}
-    </div>`).join("") + `<p class="hint" style="padding:10px 14px">Ici, le départ se fait avec le même véhicule qu'à l'arrivée. Si quelqu'un repart dans une autre voiture, tape la plaque de cette voiture en haut.</p>`;
-    el.querySelectorAll("[data-gdep]").forEach(b => b.addEventListener("click", () => {
-      const g = groups.get(b.dataset.gdep); if(depart(g, g[0].plaque)) renderAll();
-    }));
+    for(const r of open){
+      const label = (r.societe||"").trim() || "Sans société";
+      const g = norm(label);
+      if(!groups.has(g)) groups.set(g, { label, rows:[] });
+      groups.get(g).rows.push(r);
+    }
+    const list = [...groups.entries()].sort((a,b)=> a[1].label.localeCompare(b[1].label, "fr"));
+    el.innerHTML = list.map(([g, {label, rows}]) => {
+      rows.sort((a,b)=> fullName(a).localeCompare(fullName(b), "fr"));
+      return `<details class="soc" data-soc="${esc(g)}" ${socOpen.has(g) ? "open" : ""}>
+        <summary><span class="socname">${esc(label)}</span><span class="soccount">${rows.length}</span><span class="chev" aria-hidden="true"></span></summary>
+        ${rows.map(r => `<div class="gp"><div class="m"><b>${esc(fullName(r))}</b>
+            <span class="sub">Arrivée ${hm(r.arrivee)} · <span class="nw">Immat. <span class="pl" style="font-size:.95rem">${esc(r.plaque)}</span></span></span>${pnote(P[r.pid])}</div>
+          <div class="acts"><button class="btn small" data-badge="${esc(r.id)}">Badge</button><button class="btn small" data-pdep="${esc(r.id)}">Départ</button></div></div>`).join("")}
+      </details>`;
+    }).join("") + `<p class="hint" style="padding:10px 14px">Touche une société pour voir ses personnes présentes. Le bouton Départ utilise le véhicule d'arrivée. Si quelqu'un repart dans une autre voiture, tape la plaque de cette voiture en haut.</p>`;
+    el.querySelectorAll("details.soc").forEach(d => d.addEventListener("toggle", () => { d.open ? socOpen.add(d.dataset.soc) : socOpen.delete(d.dataset.soc); }));
     el.querySelectorAll("[data-pdep]").forEach(b => b.addEventListener("click", () => {
       const r = open.find(x=>x.id===b.dataset.pdep); if(r && depart([r], r.plaque)) renderAll();
     }));
@@ -663,9 +682,9 @@ details summary{cursor:pointer;font-weight:600}
       const other = r.depart && r.plaqueDepart && r.plaqueDepart !== r.plaque;
       const nextDay = r.depart && dayOf(new Date(r.depart)) !== r.jour;
       let h = `<div class="hrow">
-      <div class="times"><span class="a">${hm(r.arrivee)}</span><span class="d">${r.depart ? hm(r.depart) : "—"}</span></div>
+      <div class="times"><span class="tl">Arrivée</span><span class="a">${hm(r.arrivee)}</span><span class="tl">Départ</span><span class="d">${r.depart ? hm(r.depart) : "—"}</span></div>
       <div class="m"><b>${esc(fullName(r))}</b><span class="sub">${esc(r.societe||"—")}</span>
-      <span class="sub">Arrivé avec <span class="pl">${esc(r.plaque)}</span>${other ? ` · reparti avec <span class="pl swap">${esc(r.plaqueDepart)}</span>` : ""}</span>
+      <span class="sub nw">Immat. <span class="pl">${esc(r.plaque)}</span></span>${other ? `<span class="sub nw">Immat. départ <span class="pl swap">${esc(r.plaqueDepart)}</span></span>` : ""}
       <span class="sub">${r.depart ? "Durée " + dur(r.arrivee,r.depart) + (nextDay ? " · départ le " + dmy(r.depart) : "") : '<span class="pill in" style="font-size:.75rem">sur site</span>'}</span></div>
       ${editId===r.id ? "<span></span>" : `<button class="btn small" data-edit="${esc(r.id)}">Modifier</button>`}`;
       if(editId===r.id){
